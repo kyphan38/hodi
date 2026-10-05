@@ -16,7 +16,7 @@ export default function OnThisDay({ today }: { today: string }) {
   if (list.length === 0) return null;
 
   return (
-    <ul className="mt-14 space-y-1">
+    <ul className="space-y-1">
       {list.map((x) => (
         <li key={x.date}>
           <Link href={`/day/?d=${x.date}`} className="group flex items-baseline gap-3 text-faint">

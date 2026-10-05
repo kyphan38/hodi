@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import Editor from '@/components/Editor';
 import OnThisDay from '@/components/OnThisDay';
+import { ReviewInvites } from '@/components/ReviewView';
 import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
@@ -96,7 +97,10 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                   another
                 </button>
               )}
-              <OnThisDay today={day} />
+              <div className="mt-14 space-y-6 empty:hidden">
+                <ReviewInvites today={day} />
+                <OnThisDay today={day} />
+              </div>
             </>
           }
         />
