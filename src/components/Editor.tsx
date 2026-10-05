@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react';
 
 import { markInput, typingStore } from '@/lib/activity';
+import { caretTop } from '@/lib/caret';
+import { typewriterStore } from '@/lib/prefs';
 import { needsStamp, stampInsert } from '@/lib/stamp';
+
+/** Chế độ máy đánh chữ: dòng đang gõ nằm ở khoảng này tính từ đỉnh màn hình. */
+const TYPEWRITER_LINE = 0.42;
 
 // Phím không tạo chữ: không được kích hoạt mốc giờ.
 const QUIET_KEYS = new Set([
@@ -36,6 +41,21 @@ export default function Editor({ value, onChange, placeholder, lastWriteAt, load
   const ref = useRef<HTMLTextAreaElement>(null);
   const focusedOnce = useRef(false);
   const lastInput = useRef<number | null>(null);
+  const typewriter =
+    useSyncExternalStore(typewriterStore.subscribe, typewriterStore.get, typewriterStore.getServer) === 'on';
+  const typing = useSyncExternalStore(typingStore.subscribe, typingStore.get, typingStore.getServer);
+
+  // Máy đánh chữ: cuộn trang để dòng có con trỏ luôn ở gần giữa màn hình.
+  const center = useCallback(() => {
+    const el = ref.current;
+    if (!typewriter || !el || document.activeElement !== el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY + caretTop(el);
+    window.scrollTo({ top: Math.max(0, y - window.innerHeight * TYPEWRITER_LINE) });
+  }, [typewriter]);
+
+  useEffect(() => {
+    center();
+  }, [value, center]);
 
   const focusEnd = () => {
     const el = ref.current;
@@ -73,17 +93,27 @@ export default function Editor({ value, onChange, placeholder, lastWriteAt, load
 
   return (
     <div
-      className="page-text min-h-[50dvh] cursor-text pb-[45dvh]"
+      className={`page-text min-h-[50dvh] cursor-text pb-[45dvh] ${typewriter ? 'pt-[30dvh]' : ''}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) focusEnd();
       }}
     >
+      {typewriter && (
+        // Các dòng phía trên dòng đang gõ mờ nhẹ đi.
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 top-0 h-[40dvh] bg-linear-to-b from-bg to-transparent transition-opacity duration-700"
+          style={{ opacity: typing ? 0.8 : 0 }}
+        />
+      )}
       <div className="grow" data-value={value || placeholder || ''}>
         <textarea
           ref={ref}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
+          onKeyUp={center}
+          onClick={center}
           onInput={() => {
             lastInput.current = Date.now();
             markInput();

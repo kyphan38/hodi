@@ -7,7 +7,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useJournal } from '@/contexts/JournalContext';
 import { dayOf } from '@/lib/day';
 import { buildMarkdown, exportFilename } from '@/lib/export';
-import { applyDisplayPrefs, questionsStore, sizeStore, themeStore, type TextSize, type Theme } from '@/lib/prefs';
+import {
+  applyDisplayPrefs,
+  questionsStore,
+  sizeStore,
+  themeStore,
+  typewriterStore,
+  type TextSize,
+  type Theme,
+} from '@/lib/prefs';
 import type { Store } from '@/lib/store';
 
 function useStore<T>(store: Store<T>): T {
@@ -77,6 +85,7 @@ export default function SettingsView() {
   const theme = useStore(themeStore);
   const size = useStore(sizeStore);
   const questions = useStore(questionsStore);
+  const typewriter = useStore(typewriterStore);
 
   const pickTheme = (t: Theme) => {
     themeStore.set(t);
@@ -116,6 +125,15 @@ export default function SettingsView() {
           label="Daily question"
           value={questions}
           onPick={(v) => questionsStore.set(v)}
+          options={[
+            { value: 'on', label: 'on' },
+            { value: 'off', label: 'off' },
+          ]}
+        />
+        <Choice
+          label="Typewriter"
+          value={typewriter}
+          onPick={(v) => typewriterStore.set(v)}
           options={[
             { value: 'on', label: 'on' },
             { value: 'off', label: 'off' },
