@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+/* ============================================================
+   hodi - design tokens
+   "Tờ giấy": một màu nền ấm, chữ, không card, không viền.
+   Font hệ thống, không web font (cùng nguyên tắc với fina).
+   Đơn sắc: độ đậm heatmap là chỗ duy nhất "màu" mang nghĩa.
+   ============================================================ */
+
+:root {
+  --bg: #f6f4ef;
+  --ink: #2b2925;
+  --muted: #5f5b54; /* ~6.3:1 */
+  --faint: #8f8a80; /* ~3.2:1 - chữ phụ, nhãn */
+  --line: #e2ddd2;
+  --wash: rgb(87 83 78 / 0.08);
+  --select: rgb(87 83 78 / 0.2);
+  --heat: 43 41 37; /* rgb của mực, dùng với độ mờ */
+  --text-size: 18px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161514;
+    --ink: #e4e0d8;
+    --muted: #aaa59b;
+    --faint: #7a756c;
+    --line: #2b2926;
+    --wash: rgb(228 224 216 / 0.06);
+    --select: rgb(228 224 216 / 0.18);
+    --heat: 228 224 216;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #161514;
+  --ink: #e4e0d8;
+  --muted: #aaa59b;
+  --faint: #7a756c;
+  --line: #2b2926;
+  --wash: rgb(228 224 216 / 0.06);
+  --select: rgb(228 224 216 / 0.18);
+  --heat: 228 224 216;
+  color-scheme: dark;
+}
+
+:root[data-size="s"] {
+  --text-size: 16px;
+}
+:root[data-size="l"] {
+  --text-size: 20px;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-wash: var(--wash);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--bg);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+::selection {
+  background: var(--select);
+  color: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Viền focus chỉ khi dùng bàn phím, không khi chạm. */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 1.5px solid var(--faint);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Cột chữ: hẹp ở giữa trên Mac, 20px lề trên iPhone. */
+.paper {
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 20px) 20px 0;
+}
+
+/* Chữ khi viết và khi đọc lại. */
+.page-text {
+  font-size: var(--text-size);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Textarea tự cao theo nội dung mà không đo bằng JS: ::after chứa cùng nội
+   dung, nằm chồng cùng ô grid và đẩy khung cao lên. Đo bằng JS (height=auto
+   rồi scrollHeight) làm trang giật mỗi lần gõ vì tài liệu co lại một nhịp. */
+.grow {
+  display: grid;
+}
+.grow::after {
+  content: attr(data-value) " ";
+  visibility: hidden;
+}
+.grow > textarea,
+.grow::after {
+  grid-area: 1 / 1 / 2 / 2;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.grow > textarea {
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+  caret-color: var(--ink);
+}
+.grow > textarea::placeholder {
+  color: var(--faint);
+  opacity: 1;
+}
+.grow > textarea:focus-visible {
+  outline: none;
+}
+
+/* Che chữ khi app bị ẩn: màn hình đổi app của iPhone không lộ nhật ký. */
+html.veiled body {
+  filter: blur(18px);
+}
+
+/* Chấm trạng thái: sáng lên khi vừa lưu rồi mờ dần. */
+@keyframes settle {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+.settle {
+  animation: settle 2.4s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

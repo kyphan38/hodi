@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// ============================================================
+// hodi - Firestore rules
+//
+// hodi không có server. Rules là lớp bảo vệ DUY NHẤT, nên khác các app khác
+// (chỉ kiểm uid), ở đây kiểm luôn email: người lạ đăng nhập Google vào project
+// này cũng không đọc/ghi được gì, kể cả dưới uid của chính họ.
+//
+// __ALLOWED_USER_EMAIL__ được scripts/rules.mjs thay bằng email thật và ghi ra
+// firestore.rules (gitignore). Sửa file .template này, đừng sửa file sinh ra.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function allowed() {
+      return request.auth != null
+        && request.auth.token.email == '__ALLOWED_USER_EMAIL__'
+        && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return allowed() && request.auth.uid == uid;
+    }
+
+    function isDay(s) {
+      return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function validText(d) {
+      return d.text is string && d.text.size() <= 200000
+        && d.words is int && d.words >= 0
+        && d.createdAt is int && d.updatedAt is int;
+    }
+
+    function validEntry(d, id) {
+      return d.keys().hasOnly(['date', 'md', 'text', 'words', 'prompt', 'createdAt', 'updatedAt'])
+        && isDay(d.date) && d.date == id
+        && d.md is string && d.md.matches('^[0-9]{2}-[0-9]{2}$')
+        && (d.prompt == null || (d.prompt is string && d.prompt.size() <= 300))
+        && validText(d);
+    }
+
+    function validReview(d, id) {
+      return d.keys().hasOnly(['kind', 'period', 'text', 'words', 'createdAt', 'updatedAt'])
+        && d.period == id
+        && ((d.kind == 'week' && id.matches('^[0-9]{4}-W[0-9]{2}$'))
+          || (d.kind == 'month' && id.matches('^[0-9]{4}-[0-9]{2}$')))
+        && validText(d);
+    }
+
+    // Một ngày = một doc, id là 'YYYY-MM-DD'. Không bao giờ xoá (nguyên tắc #6).
+    match /users/{uid}/entries/{date} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validEntry(request.resource.data, date);
+      allow delete: if false;
+    }
+
+    // Review tuần '2026-W40' / tháng '2026-10'.
+    match /users/{uid}/reviews/{period} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validReview(request.resource.data, period);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
