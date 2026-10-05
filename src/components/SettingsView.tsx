@@ -4,6 +4,9 @@ import { useSyncExternalStore, type ReactNode } from 'react';
 
 import TopBar from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useJournal } from '@/contexts/JournalContext';
+import { dayOf } from '@/lib/day';
+import { buildMarkdown, exportFilename } from '@/lib/export';
 import { applyDisplayPrefs, questionsStore, sizeStore, themeStore, type TextSize, type Theme } from '@/lib/prefs';
 import type { Store } from '@/lib/store';
 
@@ -52,8 +55,25 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/**
+ * Tải file về máy. Thu hồi URL ngay là hỏng file trên Safari - nó đọc blob
+ * sau khi hàm đã chạy xong (cùng cách với logi/src/components/ExportSheet.tsx).
+ */
+function save(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export default function SettingsView() {
   const { user, signOut } = useAuth();
+  const { entries, reviews, loaded } = useJournal();
   const theme = useStore(themeStore);
   const size = useStore(sizeStore);
   const questions = useStore(questionsStore);
@@ -101,6 +121,23 @@ export default function SettingsView() {
             { value: 'off', label: 'off' },
           ]}
         />
+      </section>
+
+      <section className="mt-10 text-[15px]">
+        <Row label="Your journal">
+          <button
+            type="button"
+            disabled={!loaded}
+            onClick={() => {
+              const today = dayOf(Date.now());
+              const md = buildMarkdown(entries, reviews, today);
+              save(new Blob([md], { type: 'text/markdown;charset=utf-8' }), exportFilename(today));
+            }}
+            className="text-faint hover:text-ink disabled:opacity-40"
+          >
+            export .md
+          </button>
+        </Row>
       </section>
 
       <section className="mt-10 text-[15px]">
