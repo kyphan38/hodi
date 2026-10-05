@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
 import Heatmap from '@/components/Heatmap';
+import { FOCUS_SEARCH_KEY } from '@/components/Shortcuts';
 import TopBar from '@/components/TopBar';
 import { useJournal } from '@/contexts/JournalContext';
 import { clockStore } from '@/lib/clock';
@@ -90,6 +91,18 @@ export default function DaysView() {
       window.removeEventListener('scroll', onScroll);
     };
   }, [loaded]);
+
+  // Vừa mở bằng "/" từ trang khác → focus ô search ngay.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(FOCUS_SEARCH_KEY)) {
+        sessionStorage.removeItem(FOCUS_SEARCH_KEY);
+        inputRef.current?.focus();
+      }
+    } catch {
+      // bỏ qua
+    }
+  }, []);
 
   // "/" để tìm, ở bất cứ đâu trên trang (trừ khi đang gõ trong một ô khác).
   useEffect(() => {

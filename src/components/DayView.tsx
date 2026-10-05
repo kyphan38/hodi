@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
@@ -14,7 +15,9 @@ import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { clockStore } from '@/lib/clock';
 import { countWords, dayLabel, dayOf, dayTiny, isDayId } from '@/lib/day';
+import { hasWords } from '@/lib/journal';
 import { entryKey } from '@/lib/page-data';
+import type { Entry } from '@/types/hodi';
 
 /**
  * Một ngày đã qua. Mặc định là chế độ đọc; "edit" (hoặc ⌘E) mở cùng editor
@@ -49,22 +52,74 @@ function Message({ day, text }: { day?: string; text: string }) {
   );
 }
 
+/** Ngày đã viết liền trước / liền sau (bỏ qua ngày trống), như lật trang sổ. */
+function neighbors(entries: Entry[], day: string, today: string): { older: string | null; newer: string | null } {
+  // entries: mới nhất trước.
+  const written = entries.filter((e) => hasWords(e) && e.date !== today);
+  const older = written.find((e) => e.date < day)?.date ?? null;
+  const newer = [...written].reverse().find((e) => e.date > day)?.date ?? null;
+  return { older, newer: newer ?? (day < today ? today : null) };
+}
+
+const dayHref = (d: string, today: string) => (d === today ? '/' : `/day/?d=${d}`);
+
+/** Vuốt ngang đủ dài và đủ thẳng mới tính. Bỏ qua cú vuốt bắt đầu sát mép (vuốt back của iOS). */
+const SWIPE_MIN = 60;
+const EDGE = 24;
+
 function PastDay({ day, query }: { day: string; query: string | null }) {
+  const router = useRouter();
   const { entries, loaded } = useJournal();
+  const now = useSyncExternalStore(clockStore.subscribe, clockStore.get, clockStore.getServer);
+  const today = dayOf(now);
   const [editing, setEditing] = useState(false);
   const entry = entries.find((e) => e.date === day) ?? null;
   const empty = !entry || !entry.text.trim();
+  const { older, newer } = neighbors(entries, day, today);
 
   useEffect(() => {
+    const go = (d: string | null) => {
+      if (d) router.push(dayHref(d, today));
+    };
+    const typingIn = (t: EventTarget | null) =>
+      t instanceof HTMLElement && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT');
+
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
         e.preventDefault();
         setEditing((v) => !v);
+        return;
       }
+      if (editing || typingIn(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowLeft') go(older);
+      if (e.key === 'ArrowRight') go(newer);
     };
+
+    let start: { x: number; y: number } | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      start = t.clientX < EDGE || t.clientX > window.innerWidth - EDGE ? null : { x: t.clientX, y: t.clientY };
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!start || editing) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < 2 * Math.abs(dy)) return;
+      // Như lật sổ: kéo trang sang trái = trang sau (mới hơn).
+      go(dx < 0 ? newer : older);
+    };
+
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [editing, older, newer, today, router]);
 
   const editedOn = entry && dayOf(entry.updatedAt) > day ? dayTiny(dayOf(entry.updatedAt)) : null;
 
@@ -87,17 +142,32 @@ function PastDay({ day, query }: { day: string; query: string | null }) {
           <div className={entry?.prompt ? 'mt-4' : 'mt-8'}>
             {empty ? <p className="text-faint">Nothing written this day.</p> : <ReadText text={entry.text} query={query} />}
           </div>
-          <p className="mt-10 mb-[30dvh] flex gap-2 font-mono text-[11px] text-faint">
-            {editedOn && (
-              <>
-                <span>edited {editedOn}</span>
-                <span>·</span>
-              </>
-            )}
-            <button type="button" onClick={() => setEditing(true)} className="hover:text-ink">
-              {empty ? 'write' : 'edit'}
-            </button>
-          </p>
+          <div className="mt-10 mb-[30dvh] flex items-baseline justify-between gap-4 font-mono text-[11px] text-faint">
+            <p className="flex gap-2">
+              {editedOn && (
+                <>
+                  <span>edited {editedOn}</span>
+                  <span>·</span>
+                </>
+              )}
+              <button type="button" onClick={() => setEditing(true)} className="hover:text-ink">
+                {empty ? 'write' : 'edit'}
+              </button>
+            </p>
+            <nav className="flex gap-2" aria-label="Turn the page">
+              {older && (
+                <Link href={dayHref(older, today)} className="hover:text-ink">
+                  older
+                </Link>
+              )}
+              {older && newer && <span>·</span>}
+              {newer && (
+                <Link href={dayHref(newer, today)} className="hover:text-ink">
+                  newer
+                </Link>
+              )}
+            </nav>
+          </div>
         </>
       )}
     </main>
