@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import Editor from '@/components/Editor';
+import OnThisDay from '@/components/OnThisDay';
 import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
@@ -85,15 +86,18 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
           focusOnLoad
           label="Today's page"
           below={
-            question && !page.text ? (
-              <button
-                type="button"
-                onClick={() => setSkip((n) => n + 1)}
-                className="mt-3 py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink"
-              >
-                another
-              </button>
-            ) : null
+            <>
+              {question && !page.text && (
+                <button
+                  type="button"
+                  onClick={() => setSkip((n) => n + 1)}
+                  className="mt-3 py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink"
+                >
+                  another
+                </button>
+              )}
+              <OnThisDay today={day} />
+            </>
           }
         />
       </div>
