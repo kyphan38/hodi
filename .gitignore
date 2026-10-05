@@ -41,6 +41,7 @@ yarn-error.log*
 *firebase-adminsdk*.json
 firebase_project_cred.txt
 firebaseconfig.txt
+firestore.json
 web_push_cert.txt
 gemini.txt
 
