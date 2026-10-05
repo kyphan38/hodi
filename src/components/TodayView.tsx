@@ -99,6 +99,13 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
       write([...blocks, block]);
       return;
     }
+    // Xoá hết chữ của khối mới nhất → bỏ khối đó, quay về như lúc đầu
+    // (câu hỏi + "another · free write"). Cùng một textarea nên không mất focus.
+    if (value === '' && editing === last) {
+      setEditing(null);
+      write(blocks.slice(0, -1));
+      return;
+    }
     write(blocks.map((b, i) => (i === editing ? { ...b, body: value } : b)));
   };
 
