@@ -12,7 +12,7 @@ import sharp from 'sharp';
 const SRC = 'public/branding/hodi-icon.svg';
 const OUT = 'public/icons';
 // Nen phai khop rect trong SVG goc, neu khong vien maskable se lo mot khung khac mau.
-const BG = '#57534e';
+const BG = '#141414';
 
 mkdirSync(OUT, { recursive: true });
 const svg = readFileSync(SRC);

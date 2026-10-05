@@ -96,3 +96,4 @@ file sinh ra không commit).
 | 2026-10-05 | HTML trong SW là stale-while-revalidate | Mở là có trang ngay; dữ liệu nằm ở Firestore nên HTML cũ một build vẫn đúng |
 | 2026-10-05 | Tuỳ chọn lưu localStorage, không Firestore | Theme cần trước lần vẽ đầu; đơn giản hơn |
 | 2026-10-05 | Emulator đăng nhập bằng Google credential giả | Popup/redirect cần iframe khác origin mà trình duyệt test chặn |
+| 2026-10-05 | Bảng màu xám trung tính (nền `#fafafa` / `#111111`, icon `#141414`) | Nền kem + icon nâu nhìn "sến"; xám không pha màu khớp hub đơn sắc |

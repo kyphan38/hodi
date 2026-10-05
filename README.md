@@ -32,7 +32,7 @@ so it has neither:
 - **Service worker serves HTML stale-while-revalidate**, not network-first. The
   page appears at once even on a bad connection; a new build is used on the
   next open. Data never comes from the SW - it lives in Firestore's own cache.
-- **"Paper" UI.** One warm background, no cards, no tab bar - just
+- **"Paper" UI.** One plain neutral-gray background, no cards, no tab bar - just
   `days · settings` in a corner that fades while you type.
 
 ## A day starts at 04:00

@@ -2,47 +2,48 @@
 
 /* ============================================================
    hodi - design tokens
-   "Tờ giấy": một màu nền ấm, chữ, không card, không viền.
+   "Tờ giấy": một màu nền xám trung tính (không pha màu), chữ, không card,
+   không viền. Đã thử nền kem/nâu ấm - nhìn "sến", bỏ (2026-10-05).
    Font hệ thống, không web font (cùng nguyên tắc với fina).
    Đơn sắc: độ đậm heatmap là chỗ duy nhất "màu" mang nghĩa.
    ============================================================ */
 
 :root {
-  --bg: #f6f4ef;
-  --ink: #2b2925;
-  --muted: #5f5b54; /* ~6.3:1 */
-  --faint: #8f8a80; /* ~3.2:1 - chữ phụ, nhãn */
-  --line: #e2ddd2;
-  --wash: rgb(87 83 78 / 0.08);
-  --select: rgb(87 83 78 / 0.2);
-  --heat: 43 41 37; /* rgb của mực, dùng với độ mờ */
+  --bg: #fafafa;
+  --ink: #171717;
+  --muted: #555555; /* ~7.2:1 */
+  --faint: #8a8a8a; /* ~3.3:1 - chữ phụ, nhãn */
+  --line: #e5e5e5;
+  --wash: rgb(23 23 23 / 0.06);
+  --select: rgb(23 23 23 / 0.14);
+  --heat: 23 23 23; /* rgb của mực, dùng với độ mờ */
   --text-size: 18px;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #161514;
-    --ink: #e4e0d8;
-    --muted: #aaa59b;
-    --faint: #7a756c;
-    --line: #2b2926;
-    --wash: rgb(228 224 216 / 0.06);
-    --select: rgb(228 224 216 / 0.18);
-    --heat: 228 224 216;
+    --bg: #111111;
+    --ink: #e8e8e8;
+    --muted: #a3a3a3;
+    --faint: #7a7a7a;
+    --line: #262626;
+    --wash: rgb(232 232 232 / 0.06);
+    --select: rgb(232 232 232 / 0.18);
+    --heat: 232 232 232;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #161514;
-  --ink: #e4e0d8;
-  --muted: #aaa59b;
-  --faint: #7a756c;
-  --line: #2b2926;
-  --wash: rgb(228 224 216 / 0.06);
-  --select: rgb(228 224 216 / 0.18);
-  --heat: 228 224 216;
+  --bg: #111111;
+  --ink: #e8e8e8;
+  --muted: #a3a3a3;
+  --faint: #7a7a7a;
+  --line: #262626;
+  --wash: rgb(232 232 232 / 0.06);
+  --select: rgb(232 232 232 / 0.18);
+  --heat: 232 232 232;
   color-scheme: dark;
 }
 

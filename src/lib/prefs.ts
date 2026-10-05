@@ -21,8 +21,8 @@ export const questionsStore = stringStore<'on' | 'off'>('hodi.questions', 'on', 
 export const typewriterStore = stringStore<'on' | 'off'>('hodi.typewriter', 'off', oneOf(['on', 'off']));
 
 /** Màu thanh trạng thái (theme-color) - khớp --bg trong globals.css. */
-export const BG_LIGHT = '#f6f4ef';
-export const BG_DARK = '#161514';
+export const BG_LIGHT = '#fafafa';
+export const BG_DARK = '#111111';
 
 /** Áp theme/cỡ chữ lên <html>. Gọi khi người dùng đổi trong Settings. */
 export function applyDisplayPrefs(theme: Theme, size: TextSize): void {
