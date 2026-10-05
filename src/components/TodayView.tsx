@@ -197,7 +197,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                   <span className="w-11 shrink-0 font-mono text-[11px] text-faint">{b.time ?? ''}</span>
                   <span className="min-w-0 flex-1">
                     {b.question && <span className="block text-[14px] text-faint">{b.question}</span>}
-                    <span className="line-clamp-2 block text-[15px] text-muted group-hover:text-ink">
+                    <span className="block whitespace-pre-wrap text-[15px] text-muted group-hover:text-ink">
                       {b.body.trim() || '…'}
                     </span>
                   </span>
