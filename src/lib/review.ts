@@ -25,17 +25,17 @@ export function reviewKind(period: string): ReviewKind | null {
 export function reviewInvites(today: string): ReviewInvite[] {
   const out: ReviewInvite[] = [];
   const dow = parseDay(today).getDay(); // 0 = Chủ nhật
-  if (dow === 0) out.push({ kind: 'week', period: isoWeek(today), text: 'This week — what is worth remembering?' });
+  if (dow === 0) out.push({ kind: 'week', period: isoWeek(today), text: 'This week: what is worth remembering?' });
   if (dow === 1) {
-    out.push({ kind: 'week', period: isoWeek(addDays(today, -1)), text: 'Last week — what is worth remembering?' });
+    out.push({ kind: 'week', period: isoWeek(addDays(today, -1)), text: 'Last week: what is worth remembering?' });
   }
 
   const tomorrow = addDays(today, 1);
   const date = Number(today.slice(8, 10));
   if (monthOf(tomorrow) !== monthOf(today)) {
-    out.push({ kind: 'month', period: monthOf(today), text: 'This month — what is worth remembering?' });
+    out.push({ kind: 'month', period: monthOf(today), text: 'This month: what is worth remembering?' });
   } else if (date <= 2) {
-    out.push({ kind: 'month', period: monthOf(addDays(today, -date)), text: 'Last month — what is worth remembering?' });
+    out.push({ kind: 'month', period: monthOf(addDays(today, -date)), text: 'Last month: what is worth remembering?' });
   }
   return out;
 }

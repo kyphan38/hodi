@@ -121,8 +121,8 @@ export function weekMonday(period: string): string {
   return addDays(weekStart(`${y}-01-04`), (w - 1) * 7);
 }
 
-/** Dòng mốc giờ do app chèn: '— 21:40'. Xem lib/stamp.ts. */
-export const STAMP_RE = /^— \d{2}:\d{2}$/;
+/** Dòng mốc giờ do app chèn: '· 21:40'. Xem lib/stamp.ts. */
+export const STAMP_RE = /^· \d{2}:\d{2}$/;
 
 /** Đếm chữ: mỗi cụm không có khoảng trắng mà chứa chữ hoặc số là một chữ.
  *  Tiếng Việt đếm theo âm tiết ("nhật ký" = 2) - đủ để vẽ heatmap.

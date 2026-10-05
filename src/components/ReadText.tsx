@@ -28,7 +28,7 @@ function highlight(line: string, terms: string[], first: { done: boolean }): Rea
 }
 
 /**
- * Đọc lại một trang: chữ thô (pre-wrap), mốc giờ "— 21:40" hiện mờ.
+ * Đọc lại một trang: chữ thô (pre-wrap), mốc giờ "· 21:40" hiện mờ.
  * Có `query` (mở từ search) → tô từ khoá và cuộn tới chỗ khớp đầu tiên.
  */
 export default function ReadText({ text, query }: { text: string; query?: string | null }) {

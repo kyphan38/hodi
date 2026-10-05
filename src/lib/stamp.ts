@@ -1,7 +1,7 @@
 // ============================================================
 // hodi - Mốc giờ trong ngày
 //
-// Viết sáng một ít, tối quay lại viết tiếp: app chèn một dòng "— 21:40" để
+// Viết sáng một ít, tối quay lại viết tiếp: app chèn một dòng "· 21:40" để
 // đọc lại thấy được cảm xúc đổi theo giờ. Vẫn là một trang mỗi ngày.
 //
 // Mốc là chữ thật trong text (export ra vẫn có), chỉ hiện mờ khi đọc.
@@ -27,5 +27,5 @@ export function needsStamp(text: string, lastWriteAt: number | null, now: number
 /** Chuỗi cần chèn vào CUỐI text, kèm đủ dòng trống phía trước. */
 export function stampInsert(text: string, now: number): string {
   const lead = text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
-  return `${lead}— ${timeLabel(now)}\n`;
+  return `${lead}· ${timeLabel(now)}\n`;
 }

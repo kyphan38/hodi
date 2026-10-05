@@ -18,13 +18,13 @@ test('trang trống hoặc chưa từng lưu thì không chèn', () => {
 });
 
 test('không chèn chồng lên một mốc ở dòng cuối', () => {
-  assert.equal(needsStamp('abc\n\n— 09:10\n', T - 2 * STAMP_GAP_MS, T), false);
+  assert.equal(needsStamp('abc\n\n· 09:10\n', T - 2 * STAMP_GAP_MS, T), false);
 });
 
 test('mốc luôn có một dòng trống phía trước', () => {
-  assert.equal(stampInsert('abc', T), '\n\n— 21:40\n');
-  assert.equal(stampInsert('abc\n', T), '\n— 21:40\n');
-  assert.equal(stampInsert('abc\n\n', T), '— 21:40\n');
+  assert.equal(stampInsert('abc', T), '\n\n· 21:40\n');
+  assert.equal(stampInsert('abc\n', T), '\n· 21:40\n');
+  assert.equal(stampInsert('abc\n\n', T), '· 21:40\n');
 });
 
 test('câu hỏi cố định theo ngày, "another" đổi câu', () => {

@@ -50,7 +50,7 @@ test('export Markdown: cũ nhất trước, review sau ngày cuối kỳ, bỏ t
     [
       '# hodi\n\nExported Mon, 5 Oct 2026 · 3 pages\n',
       '## Sun, 4 Oct 2026\n\n*What made you smile?*\n\nChủ nhật.\n',
-      '## Week of 28 Sep 2026 — review\n\nTuần ổn.\n',
+      '## Review, Week of 28 Sep 2026\n\nTuần ổn.\n',
       '## Mon, 5 Oct 2026\n\nHôm nay.\n',
     ].join('\n'),
   );

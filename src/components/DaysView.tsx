@@ -214,7 +214,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
     <li>
       <Link href={href} className="group flex items-baseline gap-4 py-1.5">
         <span className="w-14 shrink-0 text-[13px] whitespace-nowrap text-faint tabular-nums">
-          {item.type === 'entry' ? dayShort(item.date) : '—'}
+          {item.type === 'entry' ? dayShort(item.date) : '·'}
         </span>
         <span className="min-w-0 flex-1 truncate group-hover:text-muted">
           {item.type === 'review' && (

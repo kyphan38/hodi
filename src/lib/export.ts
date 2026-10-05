@@ -26,7 +26,7 @@ export function buildMarkdown(entries: Entry[], reviews: Review[], today: string
   }
   for (const r of reviews) {
     if (!hasWords(r)) continue;
-    blocks.push({ date: reviewEnd(r), order: 1, md: `## ${reviewTitle(r.period, true)} — review\n\n${r.text.trim()}\n` });
+    blocks.push({ date: reviewEnd(r), order: 1, md: `## Review, ${reviewTitle(r.period, true)}\n\n${r.text.trim()}\n` });
   }
   // Cũ nhất trước; cùng ngày thì review sau bài của ngày đó.
   blocks.sort((a, b) => (a.date === b.date ? a.order - b.order : a.date < b.date ? -1 : 1));

@@ -85,7 +85,7 @@ feat(today): insert a quiet time stamp when returning to the page
 
 - **Context / Why**: Writing a little in the morning and more at night read as one block; the change of mood across the day was lost.
 - **Key Changes**:
-  - Inserted a `— HH:MM` line before the first keystroke after more than an hour away.
+  - Inserted a `· HH:MM` line before the first keystroke after more than an hour away.
   - Used `insertText` so the stamp stays in the browser undo stack.
 - **Verification**:
   - Unit tests for the gap and spacing rules; typed in the emulator and undid the stamp with Cmd+Z.

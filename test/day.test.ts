@@ -65,5 +65,5 @@ test('đếm chữ Việt/Anh, bỏ qua dấu câu đứng riêng', () => {
   assert.equal(countWords(''), 0);
   assert.equal(countWords('   \n '), 0);
   assert.equal(countWords('Hôm nay trời mưa.'), 4);
-  assert.equal(countWords('I felt ok — not great\n\n— 21:40\nstill ok'), 7); // mốc giờ không tính
+  assert.equal(countWords('I felt ok - not great\n\n· 21:40\nstill ok'), 7); // mốc giờ không tính
 });

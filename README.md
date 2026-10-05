@@ -57,7 +57,7 @@ the corner tells you where the text is: hollow = on this device, filled = synced
 ## Time stamps
 
 Come back to the page after more than an hour and the first keystroke inserts
-`— 21:40` on its own line. It is real text (it shows in the export), uses
+`· 21:40` on its own line. It is real text (it shows in the export), uses
 `insertText` so ⌘Z removes it, does not count as words, and is shown faint when
 reading.
 

@@ -36,8 +36,8 @@ const review = (period: string, text: string): Review => ({
 });
 
 test('dòng đầu bỏ dòng trống và mốc giờ', () => {
-  assert.equal(firstLine('\n\n— 08:10\n  Trời mưa.  \nrồi tạnh'), 'Trời mưa.');
-  assert.equal(firstLine('— 08:10\n'), '');
+  assert.equal(firstLine('\n\n· 08:10\n  Trời mưa.  \nrồi tạnh'), 'Trời mưa.');
+  assert.equal(firstLine('· 08:10\n'), '');
   assert.ok(firstLine('a'.repeat(500)).endsWith('…'));
 });
 
