@@ -8,9 +8,7 @@
 // File thuần, không DOM.
 // ============================================================
 
-import { STAMP_RE, timeLabel } from '@/lib/day';
-
-export { STAMP_RE };
+import { blockLead, isMarkLine, timeLabel } from '@/lib/day';
 
 /** Quay lại sau quãng này thì mới chèn mốc. */
 export const STAMP_GAP_MS = 60 * 60_000;
@@ -19,13 +17,12 @@ export const STAMP_GAP_MS = 60 * 60_000;
 export function needsStamp(text: string, lastWriteAt: number | null, now: number): boolean {
   if (!text.trim() || lastWriteAt === null) return false;
   if (now - lastWriteAt < STAMP_GAP_MS) return false;
-  // Dòng cuối đã là một mốc (vừa chèn rồi bỏ đi) → không chèn chồng.
+  // Dòng cuối đã là mốc giờ hay câu hỏi vừa chèn → không chèn chồng.
   const lastLine = text.trimEnd().split('\n').pop() ?? '';
-  return !STAMP_RE.test(lastLine);
+  return !isMarkLine(lastLine);
 }
 
 /** Chuỗi cần chèn vào CUỐI text, kèm đủ dòng trống phía trước. */
 export function stampInsert(text: string, now: number): string {
-  const lead = text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
-  return `${lead}· ${timeLabel(now)}\n`;
+  return `${blockLead(text)}· ${timeLabel(now)}\n`;
 }

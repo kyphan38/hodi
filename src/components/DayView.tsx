@@ -17,6 +17,7 @@ import { clockStore } from '@/lib/clock';
 import { countWords, dayLabel, dayOf, dayTiny, isDayId } from '@/lib/day';
 import { hasWords } from '@/lib/journal';
 import { entryKey } from '@/lib/page-data';
+import { askedIn } from '@/lib/questions';
 import type { Entry } from '@/types/hodi';
 
 /**
@@ -122,6 +123,8 @@ function PastDay({ day, query }: { day: string; query: string | null }) {
   }, [editing, older, newer, today, router]);
 
   const editedOn = entry && dayOf(entry.updatedAt) > day ? dayTiny(dayOf(entry.updatedAt)) : null;
+  // Câu hỏi giờ nằm ngay trong trang ("› …"); chỉ in riêng khi trang không có dòng câu hỏi nào.
+  const oldPrompt = entry?.prompt && askedIn(entry.text).size === 0 ? entry.prompt : null;
 
   return (
     <main className="paper">
@@ -138,8 +141,8 @@ function PastDay({ day, query }: { day: string; query: string | null }) {
         <DayEditor day={day} onDone={() => setEditing(false)} />
       ) : !loaded ? null : (
         <>
-          {entry?.prompt && <p className="mt-8 text-[15px] text-faint">{entry.prompt}</p>}
-          <div className={entry?.prompt ? 'mt-4' : 'mt-8'}>
+          {oldPrompt && <p className="mt-8 text-[15px] text-faint">{oldPrompt}</p>}
+          <div className={oldPrompt ? 'mt-4' : 'mt-8'}>
             {empty ? <p className="text-faint">Nothing written this day.</p> : <ReadText text={entry.text} query={query} />}
           </div>
           <div className="mt-10 mb-[30dvh] flex items-baseline justify-between gap-4 font-mono text-[11px] text-faint">

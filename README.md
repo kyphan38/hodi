@@ -61,6 +61,15 @@ Come back to the page after more than an hour and the first keystroke inserts
 `insertText` so ⌘Z removes it, does not count as words, and is shown faint when
 reading.
 
+## Questions
+
+An empty page shows the day's question in faint text (`another` swaps it). The
+first keystroke turns it into the page's first line, `› What did you avoid
+saying today?`, so the answer sits right under it. `+ question` under the text
+adds the next question that is not on the page yet. Question lines are real text
+like time stamps: faint when reading, not counted as words, skipped as a day's
+first line in the timeline. Turn questions off in Settings.
+
 ## Firestore reads
 
 | When | Reads |

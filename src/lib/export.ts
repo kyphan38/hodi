@@ -8,6 +8,7 @@
 
 import { dayLong } from '@/lib/day';
 import { hasWords, reviewEnd } from '@/lib/journal';
+import { askedIn } from '@/lib/questions';
 import { reviewTitle } from '@/lib/review';
 import type { Entry, Review } from '@/types/hodi';
 
@@ -21,7 +22,8 @@ export function buildMarkdown(entries: Entry[], reviews: Review[], today: string
 
   for (const e of entries) {
     if (!hasWords(e)) continue;
-    const prompt = e.prompt ? `*${e.prompt}*\n\n` : '';
+    // Câu hỏi đã nằm trong trang ('› …') thì không in lại.
+    const prompt = e.prompt && askedIn(e.text).size === 0 ? `*${e.prompt}*\n\n` : '';
     blocks.push({ date: e.date, order: 0, md: `## ${dayLong(e.date)}\n\n${prompt}${e.text.trim()}\n` });
   }
   for (const r of reviews) {

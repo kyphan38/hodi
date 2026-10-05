@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 
-import { STAMP_RE } from '@/lib/day';
+import { isMarkLine } from '@/lib/day';
 import { findMatches, queryTerms } from '@/lib/journal';
 
 function highlight(line: string, terms: string[], first: { done: boolean }): ReactNode {
@@ -28,7 +28,7 @@ function highlight(line: string, terms: string[], first: { done: boolean }): Rea
 }
 
 /**
- * Đọc lại một trang: chữ thô (pre-wrap), mốc giờ "· 21:40" hiện mờ.
+ * Đọc lại một trang: chữ thô (pre-wrap), mốc giờ "· 21:40" và câu hỏi "› …" hiện mờ.
  * Có `query` (mở từ search) → tô từ khoá và cuộn tới chỗ khớp đầu tiên.
  */
 export default function ReadText({ text, query }: { text: string; query?: string | null }) {
@@ -46,7 +46,7 @@ export default function ReadText({ text, query }: { text: string; query?: string
     <div ref={ref} className="page-text">
       {lines.map((line, i) => (
         <Fragment key={i}>
-          {STAMP_RE.test(line.trim()) ? <span className="text-faint">{line}</span> : highlight(line, terms, first)}
+          {isMarkLine(line) ? <span className="text-faint">{line}</span> : highlight(line, terms, first)}
           {i < lines.length - 1 && '\n'}
         </Fragment>
       ))}

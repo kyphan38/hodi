@@ -14,7 +14,7 @@ import { lastInputAt } from '@/lib/activity';
 import { countWords, dayLabel, dayOf } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
 import { questionsStore } from '@/lib/prefs';
-import { questionFor } from '@/lib/questions';
+import { nextQuestion, questionFor } from '@/lib/questions';
 
 /** Đang mở sẵn qua 04:00: chỉ tự sang trang mới khi đã lâu không gõ. */
 const IDLE_MS = 10 * 60_000;
@@ -62,6 +62,13 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   const getPrompt = useCallback(() => question, [question]);
   const page = usePage(uid, entryKey(day), getPrompt);
 
+  // "+ question": câu tiếp theo chưa có trong trang, mỗi lần bấm đi tiếp một câu.
+  const askMore = () => {
+    const next = nextQuestion(day, page.text, skip + 1);
+    setSkip(next.skip);
+    return next.question;
+  };
+
   useSaveShortcut(() => {
     page.flush();
     setFlash((n) => n + 1);
@@ -82,6 +89,8 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
           value={page.text}
           onChange={page.setText}
           placeholder={question ?? ''}
+          question={question}
+          onAskMore={questionsOn ? askMore : undefined}
           lastWriteAt={page.data?.updatedAt ?? null}
           loaded={page.loaded}
           focusOnLoad

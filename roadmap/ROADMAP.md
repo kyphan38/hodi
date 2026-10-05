@@ -20,7 +20,8 @@ Bất biến. Agent thực thi không được đổi mà không hỏi.
 4. **Không bao giờ mất chữ.** Autosave ~1s + flush khi ẩn tab/rời trang + nháp localStorage.
    Có chữ chưa lưu mà server đổi → gộp (`mergeTexts`), không bỏ bên nào.
 5. **Không áp lực.** Không streak, không thông báo, không huy hiệu, không mục tiêu số chữ.
-   Tối đa 1 câu hỏi gợi ý mỗi ngày, bỏ qua được.
+   App chỉ tự hiện 1 câu hỏi mỗi ngày (chữ mờ trên trang trống). Câu thêm chỉ xuất hiện khi
+   mình bấm `+ question`.
 6. **Không xoá dữ liệu.** Rules `allow delete: if false`.
 7. **Đơn sắc.** Màu chỉ mang nghĩa (độ đậm heatmap). SVG `currentColor`, không emoji.
 8. **Không server.** Không API route, không secret phía server. Bảo vệ dữ liệu = Firestore
@@ -98,3 +99,5 @@ file sinh ra không commit).
 | 2026-10-05 | Emulator đăng nhập bằng Google credential giả | Popup/redirect cần iframe khác origin mà trình duyệt test chặn |
 | 2026-10-05 | Bảng màu xám trung tính (nền `#fafafa` / `#111111`) | Nền kem nhìn "sến"; xám không pha màu khớp hub |
 | 2026-10-05 | Icon theo format chung mới: ô sáng `#f4f4f1`, viền `#dcdcd6`, nét `#141414` | Cả hệ sinh thái đổi sang ô sáng cùng ngày; app mới chép format này |
+| 2026-10-05 | Câu hỏi nằm trong trang: dòng `› …`, thêm câu bằng `+ question` | Câu hỏi biến mất khi gõ thì không trả lời được nhiều câu; giữ trong chữ thì đọc lại vẫn thấy câu nào được trả lời |
+| 2026-10-05 | Mốc giờ đổi từ dấu gạch dài sang `· 21:40` | Workspace cấm dấu gạch dài (AGENTS.md) |

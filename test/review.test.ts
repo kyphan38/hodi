@@ -55,4 +55,8 @@ test('export Markdown: cũ nhất trước, review sau ngày cuối kỳ, bỏ t
     ].join('\n'),
   );
   assert.equal(exportFilename('2026-10-05'), 'hodi-2026-10-05.md');
+  // Câu hỏi đã nằm trong trang thì không in lại ở dạng *nghiêng*.
+  const inline = buildMarkdown([entry('2026-10-04', '› Q?\nTrả lời.', 'Q?')], [], '2026-10-05');
+  assert.ok(inline.includes('## Sun, 4 Oct 2026\n\n› Q?\nTrả lời.\n'));
+  assert.ok(!inline.includes('*Q?*'));
 });

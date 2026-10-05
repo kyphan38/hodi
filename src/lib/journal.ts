@@ -6,18 +6,18 @@
 // trên máy; search cũng chạy trên máy, không cần dịch vụ ngoài).
 // ============================================================
 
-import { STAMP_RE, addDays, diffDays, monthDay, monthOf, weekMonday, weekStart } from '@/lib/day';
+import { addDays, isMarkLine, diffDays, monthDay, monthOf, weekMonday, weekStart } from '@/lib/day';
 import type { Entry, Review } from '@/types/hodi';
 
 // ---- Dòng đầu tiên ----
 
 const FIRST_LINE_MAX = 140;
 
-/** Dòng có chữ đầu tiên (bỏ mốc giờ), cắt gọn cho một dòng timeline. */
+/** Dòng có chữ đầu tiên (bỏ mốc giờ và câu hỏi), cắt gọn cho một dòng timeline. */
 export function firstLine(text: string): string {
   for (const raw of text.split('\n')) {
     const line = raw.trim();
-    if (!line || STAMP_RE.test(line)) continue;
+    if (!line || isMarkLine(line)) continue;
     return line.length > FIRST_LINE_MAX ? `${line.slice(0, FIRST_LINE_MAX - 1).trimEnd()}…` : line;
   }
   return '';

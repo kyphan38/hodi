@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useSyncExternalStore, type KeyboardEven
 import { markInput, typingStore } from '@/lib/activity';
 import { caretTop } from '@/lib/caret';
 import { typewriterStore } from '@/lib/prefs';
+import { questionInsert } from '@/lib/questions';
 import { needsStamp, stampInsert } from '@/lib/stamp';
 
 /** Chế độ máy đánh chữ: dòng đang gõ nằm ở khoảng này tính từ đỉnh màn hình. */
@@ -28,6 +29,10 @@ type Props = {
   /** Đặt con trỏ ở cuối bài khi mở trang. */
   focusOnLoad?: boolean;
   label: string;
+  /** Câu hỏi đang hiện mờ trên trang trống: gõ chữ đầu tiên là nó thành dòng "› …". */
+  question?: string | null;
+  /** Có thì hiện "+ question" dưới chữ; trả về câu hỏi tiếp theo để chèn vào cuối. */
+  onAskMore?: () => string;
   /** Hiện ngay dưới chữ (vd: "another"). */
   below?: ReactNode;
 };
@@ -37,7 +42,18 @@ type Props = {
  * ô viết. Phần đệm lớn phía dưới để dòng đang gõ luôn kéo lên được trên bàn
  * phím iPhone; chạm vào đó là focus về cuối bài.
  */
-export default function Editor({ value, onChange, placeholder, lastWriteAt, loaded, focusOnLoad, label, below }: Props) {
+export default function Editor({
+  value,
+  onChange,
+  placeholder,
+  lastWriteAt,
+  loaded,
+  focusOnLoad,
+  label,
+  question,
+  onAskMore,
+  below,
+}: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const focusedOnce = useRef(false);
   const lastInput = useRef<number | null>(null);
@@ -74,21 +90,45 @@ export default function Editor({ value, onChange, placeholder, lastWriteAt, load
     if (doc.scrollHeight > window.innerHeight * 1.6) window.scrollTo({ top: doc.scrollHeight });
   }, [loaded, focusOnLoad]);
 
+  const lastActivity = () => Math.max(lastWriteAt ?? 0, lastInput.current ?? 0) || null;
+
+  /** Chèn vào cuối bằng insertText: đi qua undo stack của trình duyệt, nên ⌘Z gỡ được như chữ thường. */
+  const insertAtEnd = (insert: string) => {
+    const el = ref.current;
+    if (!el) return;
+    if (document.activeElement !== el) el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+    if (!document.execCommand('insertText', false, insert)) onChange(el.value + insert);
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.nativeEvent.isComposing || QUIET_KEYS.has(e.key)) return;
     const el = e.currentTarget;
     const end = el.value.length;
     if (el.selectionStart !== end || el.selectionEnd !== end) return;
 
-    const now = Date.now();
-    const last = Math.max(lastWriteAt ?? 0, lastInput.current ?? 0) || null;
-    if (!needsStamp(el.value, last, now)) return;
+    // Trang trống đang hiện câu hỏi: chữ đầu tiên biến câu hỏi thành dòng đầu
+    // của trang, để nó không biến mất khi bắt đầu trả lời.
+    if (end === 0 && question) {
+      insertAtEnd(questionInsert('', question));
+      return;
+    }
 
-    // Chèn mốc giờ trước ký tự sắp gõ. insertText đi qua undo stack của trình
-    // duyệt, nên ⌘Z gỡ được mốc như gỡ chữ thường.
-    const insert = stampInsert(el.value, now);
+    const now = Date.now();
+    if (!needsStamp(el.value, lastActivity(), now)) return;
+    // Chèn mốc giờ trước ký tự sắp gõ.
     lastInput.current = now;
-    if (!document.execCommand('insertText', false, insert)) onChange(el.value + insert);
+    insertAtEnd(stampInsert(el.value, now));
+  };
+
+  /** "+ question": quay lại sau lâu thì mốc giờ đi trước, rồi tới câu hỏi mới. */
+  const askMore = () => {
+    if (!onAskMore) return;
+    const now = Date.now();
+    const stamp = needsStamp(value, lastActivity(), now) ? stampInsert(value, now) : '';
+    lastInput.current = now;
+    insertAtEnd(stamp + questionInsert(value + stamp, onAskMore()));
+    markInput();
   };
 
   return (
@@ -127,6 +167,15 @@ export default function Editor({ value, onChange, placeholder, lastWriteAt, load
           autoComplete="off"
         />
       </div>
+      {onAskMore && value.trim() && (
+        <button
+          type="button"
+          onClick={askMore}
+          className="mt-6 py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink"
+        >
+          + question
+        </button>
+      )}
       {below}
     </div>
   );
