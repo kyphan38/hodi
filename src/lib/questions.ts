@@ -1,17 +1,16 @@
 // ============================================================
 // hodi - Câu hỏi gợi ý của ngày
 //
-// Trang trống hiện câu hỏi của ngày như chữ mờ. Gõ chữ đầu tiên là câu hỏi
-// thành dòng đầu của trang ("› …"), câu trả lời nằm ngay dưới. Muốn trả lời
-// thêm thì bấm "+ question": app chèn câu tiếp theo. App không bao giờ tự hỏi
-// thêm. Mục tiêu: dễ thành thật với cảm xúc và dám nhìn thẳng sự thật - nhưng
-// không tạo áp lực (nhiều câu quá là dễ bỏ cuộc).
+// Trang hôm nay hiện một câu hỏi mờ, kèm "another" và "free write". Gõ là trả
+// lời; "done" khép câu lại và câu tiếp theo hiện ra. Không bắt buộc trả lời,
+// không đếm. Mục tiêu: dễ thành thật với cảm xúc và dám nhìn thẳng sự thật -
+// nhưng không tạo áp lực (nhiều câu quá là dễ bỏ cuộc).
 //
 // Câu ngắn, tiếng Anh dễ đọc. Thêm/bớt thoải mái; thứ tự không quan trọng
 // vì câu của ngày được chọn bằng hash của ngày.
 // ============================================================
 
-import { QUESTION_RE, blockLead } from '@/lib/day';
+import { QUESTION_RE } from '@/lib/day';
 
 export const QUESTIONS: readonly string[] = [
   // feelings
@@ -79,17 +78,7 @@ export function questionFor(day: string, skip = 0): string {
   return QUESTIONS[(hash(day) + skip) % n];
 }
 
-/** Dòng câu hỏi trong trang: '› What did you avoid saying today?'. */
-export function questionLine(q: string): string {
-  return `› ${q}`;
-}
-
-/** Chuỗi chèn vào CUỐI text cho một câu hỏi mới (kèm dòng trống phía trên). */
-export function questionInsert(text: string, q: string): string {
-  return `${blockLead(text)}${questionLine(q)}\n`;
-}
-
-/** Các câu hỏi đã có trong trang. */
+/** Các câu hỏi đã có trong trang (dòng "› …"). */
 export function askedIn(text: string): Set<string> {
   const out = new Set<string>();
   for (const line of text.split('\n')) {
@@ -99,9 +88,8 @@ export function askedIn(text: string): Set<string> {
   return out;
 }
 
-/** Câu tiếp theo (từ `skip` trở đi) chưa có trong trang. */
-export function nextQuestion(day: string, text: string, skip: number): { question: string; skip: number } {
-  const asked = askedIn(text);
+/** Câu tiếp theo (từ `skip` trở đi) chưa được trả lời hôm nay. */
+export function nextQuestion(day: string, asked: Set<string>, skip: number): { question: string; skip: number } {
   for (let i = 0; i < QUESTIONS.length; i++) {
     const q = questionFor(day, skip + i);
     if (!asked.has(q)) return { question: q, skip: skip + i };

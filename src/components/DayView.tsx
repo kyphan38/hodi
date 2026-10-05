@@ -192,7 +192,6 @@ function DayEditor({ day, onDone }: { day: string; onDone: () => void }) {
       <Editor
         value={page.text}
         onChange={page.setText}
-        lastWriteAt={page.data?.updatedAt ?? null}
         loaded={page.loaded}
         focusOnLoad
         label={`Page for ${dayLabel(day)}`}

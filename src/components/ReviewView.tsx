@@ -77,7 +77,6 @@ function ReviewPage({ period, kind }: { period: string; kind: ReviewKind }) {
           value={page.text}
           onChange={page.setText}
           placeholder={PLACEHOLDER[kind]}
-          lastWriteAt={page.data?.updatedAt ?? null}
           loaded={page.loaded}
           label={`Review for ${reviewTitle(period)}`}
         />

@@ -54,21 +54,28 @@ If the page changed somewhere else while this device still had unsaved text,
 the two versions are **merged** (`mergeTexts`), never overwritten. The dot in
 the corner tells you where the text is: hollow = on this device, filled = synced.
 
-## Time stamps
+## Today: one block at a time
 
-Come back to the page after more than an hour and the first keystroke inserts
-`· 21:40` on its own line. It is real text (it shows in the export), uses
-`insertText` so ⌘Z removes it, does not count as words, and is shown faint when
-reading.
+Today's page shows one faint question with `another · free write` under it.
+Start typing to answer; `done` (or ⌘Enter) closes the block and the next
+question that was not answered today appears. `free write` gives a blank block
+with no question. Finished blocks stay above as a faint list (time, question,
+first lines); tap one to open and edit it in place. `done` is not "save" -
+everything autosaves while you type.
 
-## Questions
+The day is still one plain-text page, one block after another:
 
-An empty page shows the day's question in faint text (`another` swaps it). The
-first keystroke turns it into the page's first line, `› What did you avoid
-saying today?`, so the answer sits right under it. `+ question` under the text
-adds the next question that is not on the page yet. Question lines are real text
-like time stamps: faint when reading, not counted as words, skipped as a day's
-first line in the timeline. Turn questions off in Settings.
+```
+· 08:10
+› What drained you today?
+Họp dài, mệt.
+
+· 21:40
+Một tách cà phê ngon.
+```
+
+Time and question lines are faint when reading, not counted as words, and
+skipped as the day's first line in the timeline (`src/lib/blocks.ts`).
 
 ## Firestore reads
 
@@ -84,6 +91,7 @@ About 365 docs a year. Far from the 50k/day free tier.
 | Key | Where | Does |
 |---|---|---|
 | ⌘S | any editor | saves now (instead of the browser's "save page") |
+| ⌘Enter | today | done: close the block, show the next question |
 | ⌘E | a past day | edit / back to reading |
 | ← → | a past day | older / newer written day (swipe on iPhone) |
 | / | anywhere | search |

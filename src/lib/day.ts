@@ -125,10 +125,10 @@ export function weekMonday(period: string): string {
 // Là chữ thật trong trang (export ra vẫn có), nhưng hiện mờ khi đọc và không
 // tính vào số chữ: đó là chữ của app, không phải của mình.
 
-/** Mốc giờ: '· 21:40'. Xem lib/stamp.ts. */
+/** Dòng giờ đầu mỗi khối: '· 21:40'. Xem lib/blocks.ts. */
 export const STAMP_RE = /^· \d{2}:\d{2}$/;
 
-/** Câu hỏi: '› What did you avoid saying today?'. Xem lib/questions.ts. */
+/** Câu hỏi của khối: '› What did you avoid saying today?'. Xem lib/blocks.ts. */
 export const QUESTION_RE = /^› \S/;
 
 export function isMarkLine(line: string): boolean {
@@ -136,15 +136,9 @@ export function isMarkLine(line: string): boolean {
   return STAMP_RE.test(t) || QUESTION_RE.test(t);
 }
 
-/** Phần đệm trước một khối chèn vào CUỐI text, để khối luôn có một dòng trống phía trên. */
-export function blockLead(text: string): string {
-  if (text === '' || text.endsWith('\n\n')) return '';
-  return text.endsWith('\n') ? '\n' : '\n\n';
-}
-
 /** Đếm chữ: mỗi cụm không có khoảng trắng mà chứa chữ hoặc số là một chữ.
  *  Tiếng Việt đếm theo âm tiết ("nhật ký" = 2) - đủ để vẽ heatmap.
- *  Mốc giờ và câu hỏi do app chèn không tính. */
+ *  Dòng giờ và câu hỏi do app ghi không tính. */
 export function countWords(text: string): number {
   let n = 0;
   for (const line of text.split('\n')) {

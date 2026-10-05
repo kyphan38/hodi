@@ -20,8 +20,8 @@ Bất biến. Agent thực thi không được đổi mà không hỏi.
 4. **Không bao giờ mất chữ.** Autosave ~1s + flush khi ẩn tab/rời trang + nháp localStorage.
    Có chữ chưa lưu mà server đổi → gộp (`mergeTexts`), không bỏ bên nào.
 5. **Không áp lực.** Không streak, không thông báo, không huy hiệu, không mục tiêu số chữ.
-   App chỉ tự hiện 1 câu hỏi mỗi ngày (chữ mờ trên trang trống). Câu thêm chỉ xuất hiện khi
-   mình bấm `+ question`.
+   Mỗi lúc chỉ hiện 1 câu hỏi; trả lời xong bấm `done` thì câu tiếp theo mới hiện. Không
+   đếm, không nhắc - muốn dừng thì đóng app.
 6. **Không xoá dữ liệu.** Rules `allow delete: if false`.
 7. **Đơn sắc.** Màu chỉ mang nghĩa (độ đậm heatmap). SVG `currentColor`, không emoji.
 8. **Không server.** Không API route, không secret phía server. Bảo vệ dữ liệu = Firestore
@@ -59,7 +59,7 @@ file sinh ra không commit).
 | Stage | Tên | Kết quả kiểm chứng được |
 |---|---|---|
 | 0 | Setup (chủ app) | Firebase project + Vercel + domain + env |
-| 1 | Khung + Today | Đăng nhập, viết hôm nay, autosave, offline, mốc giờ, theme |
+| 1 | Khung + Today | Đăng nhập, viết hôm nay, autosave, offline, theme |
 | 2 | Days | Search, heatmap, random day, timeline, đọc/sửa ngày cũ, On this day |
 | 3 | Review + Settings | Review tuần/tháng, export `.md`, cỡ chữ |
 | 4 | Chi tiết + ra mắt | Typewriter, vuốt/phím đổi ngày, README, hub, deploy, iPhone |
@@ -101,3 +101,4 @@ file sinh ra không commit).
 | 2026-10-05 | Icon theo format chung mới: ô sáng `#f4f4f1`, viền `#dcdcd6`, nét `#141414` | Cả hệ sinh thái đổi sang ô sáng cùng ngày; app mới chép format này |
 | 2026-10-05 | Câu hỏi nằm trong trang: dòng `› …`, thêm câu bằng `+ question` | Câu hỏi biến mất khi gõ thì không trả lời được nhiều câu; giữ trong chữ thì đọc lại vẫn thấy câu nào được trả lời |
 | 2026-10-05 | Mốc giờ đổi từ dấu gạch dài sang `· 21:40` | Workspace cấm dấu gạch dài (AGENTS.md) |
+| 2026-10-05 | Today thành từng khối: câu hỏi → viết → `done` → câu tiếp theo; `free write`; khối xong thành danh sách mờ, chạm để sửa; mỗi khối có giờ, bỏ mốc giờ tự động sau 1 tiếng | Chủ app muốn tập trung từng câu và có cảm giác "xong"; giữ một trang chữ thô nên export/search/heatmap không đổi |
