@@ -23,10 +23,27 @@ import {
 
 export const USE_EMULATORS = process.env.NEXT_PUBLIC_USE_EMULATORS === '1';
 
+/**
+ * Trên domain thật, authDomain = chính domain của app (vercel.json proxy
+ * /__/auth/* sang firebaseapp.com). Nếu để firebaseapp.com, Safari trên iPhone,
+ * iPad coi đó là domain bên thứ ba và chặn storage, nên đăng nhập Google không
+ * báo kết quả về được (auth/popup-closed-by-user).
+ *
+ * localhost và preview *.vercel.app giữ firebaseapp.com: các host đó chưa có
+ * redirect URI trong Google OAuth client.
+ */
+function resolveAuthDomain(): string | undefined {
+  const fallback = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  if (typeof window === 'undefined') return fallback;
+  const { protocol, host, hostname } = window.location;
+  if (protocol !== 'https:' || hostname.endsWith('.vercel.app')) return fallback;
+  return host;
+}
+
 // Next.js chỉ inline được biến NEXT_PUBLIC_* khi viết đầy đủ, không destructure.
 const realConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain: resolveAuthDomain(),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,

@@ -48,6 +48,16 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+/** iPhone, iPad (iPadOS báo "Macintosh") hoặc app ngoài màn hình chính. */
+function prefersRedirect(): boolean {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const standalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return ios || standalone;
+}
+
 function newProvider() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -98,7 +108,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signInWithCredential(getAuthClient(), GoogleAuthProvider.credential(token));
         return;
       }
-      await signInWithPopup(getAuthClient(), newProvider());
+      // Redirect chỉ chạy được khi trang đăng nhập cùng domain (vercel.json);
+      // nếu không, Safari làm mất kết quả.
+      const auth = getAuthClient();
+      if (auth.config.authDomain === window.location.host && prefersRedirect()) {
+        await signInWithRedirect(auth, newProvider());
+        return; // trang sẽ điều hướng đi
+      }
+      await signInWithPopup(auth, newProvider());
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
