@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------
-// hodi - Sinh firestore.rules từ firestore.rules.template
+// hodi - Build firestore.rules from firestore.rules.template
 //
-//   npm run rules            # đọc ALLOWED_USER_EMAIL từ .env.local / env
-//   npm run rules -- --emu   # emulator: thiếu email thì dùng dev@hodi.test
+//   npm run rules            # reads ALLOWED_USER_EMAIL from .env.local / env
+//   npm run rules -- --emu   # emulator: falls back to dev@hodi.test
 //
-// Rồi deploy:  firebase deploy --only firestore:rules
+// Then deploy:  firebase deploy --only firestore:rules
 //
-// Vì sao không viết email thẳng vào rules: repo có thể public, còn file sinh ra
-// nằm trong .gitignore.
+// Why not write the email into the rules: the repo may be public, and the
+// generated file is in .gitignore.
 // ---------------------------------------------------------------------------
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';

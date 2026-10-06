@@ -1,19 +1,19 @@
 // ============================================================
-// hodi - Nhìn lại cả cuốn sổ: timeline, heatmap, On this day, random, search
+// hodi - Looking back over the journal: timeline, heatmap, On this day, random, search
 //
-// File thuần: không React, không Firestore, không DOM - test bằng node:test.
-// Đầu vào là toàn bộ entries/reviews (một năm ~365 doc, đủ nhỏ để làm hết
-// trên máy; search cũng chạy trên máy, không cần dịch vụ ngoài).
+// Pure file: no React, no Firestore, no DOM - tested with node:test.
+// Input is all entries/reviews (~365 docs a year, small enough to do on the
+// device; search also runs on the device, no outside service).
 // ============================================================
 
 import { addDays, isMarkLine, diffDays, monthDay, monthOf, weekMonday, weekStart } from '@/lib/day';
 import type { Entry, Review } from '@/types/hodi';
 
-// ---- Dòng đầu tiên ----
+// ---- First line ----
 
 const FIRST_LINE_MAX = 140;
 
-/** Dòng có chữ đầu tiên (bỏ mốc giờ và câu hỏi), cắt gọn cho một dòng timeline. */
+/** First line with text (skipping time marks and questions), trimmed for one timeline row. */
 export function firstLine(text: string): string {
   for (const raw of text.split('\n')) {
     const line = raw.trim();
@@ -23,7 +23,7 @@ export function firstLine(text: string): string {
   return '';
 }
 
-/** Trang có chữ thật hay không (xoá hết chữ thì doc vẫn còn, nhưng không tính). */
+/** Whether a page has real text (a cleared doc still exists but does not count). */
 export function hasWords(e: { words: number }): boolean {
   return e.words > 0;
 }
@@ -37,7 +37,7 @@ export type TimelineItem =
 
 export type TimelineMonth = { month: string; items: TimelineItem[] };
 
-/** Ngày cuối của kỳ review - review hiện ngay trên ngày đó trong timeline. */
+/** Last day of a review period - the review shows right above that day in the timeline. */
 export function reviewEnd(r: Pick<Review, 'kind' | 'period'>): string {
   if (r.kind === 'week') return addDays(weekMonday(r.period), 6);
   const [y, m] = r.period.split('-').map(Number);
@@ -45,13 +45,13 @@ export function reviewEnd(r: Pick<Review, 'kind' | 'period'>): string {
   return addDays(next, -1);
 }
 
-/** Ít nhất ngần này ngày không viết mới hiện "· N quiet days". */
+/** At least this many unwritten days before showing "· N quiet days". */
 export const QUIET_MIN = 2;
 
 /**
- * Timeline mới nhất trước, nhóm theo tháng. Giữa hai bài cách nhau từ
- * QUIET_MIN ngày trống trở lên có một dòng "khoảng lặng" - không phán xét,
- * chỉ cho thấy nhịp.
+ * Timeline, newest first, grouped by month. Between two entries QUIET_MIN or
+ * more empty days apart there is a "quiet" row - no judgment, it just shows
+ * the rhythm.
  */
 export function buildTimeline(entries: Entry[], reviews: Review[]): TimelineMonth[] {
   type Row = { date: string; order: number; item: TimelineItem };
@@ -65,7 +65,7 @@ export function buildTimeline(entries: Entry[], reviews: Review[]): TimelineMont
     if (!hasWords(r)) continue;
     rows.push({ date: reviewEnd(r), order: 1, item: { type: 'review', period: r.period, kind: r.kind, line: firstLine(r.text) } });
   }
-  // Mới nhất trước; cùng ngày thì review đứng trên bài của ngày đó.
+  // Newest first; on the same day the review sits above that day's entry.
   rows.sort((a, b) => (a.date === b.date ? b.order - a.order : a.date < b.date ? 1 : -1));
 
   const months: TimelineMonth[] = [];
@@ -95,7 +95,7 @@ export const HEAT_WEEKS = 53;
 
 export type HeatCell = { date: string; words: number; level: 0 | 1 | 2 | 3 | 4; future: boolean };
 
-/** 5 mức theo số chữ. Ngưỡng cố định, không theo phần trăm - để năm sau so được với năm nay. */
+/** 5 levels by word count. Fixed thresholds, not percentiles - so next year compares with this year. */
 export function heatLevel(words: number): HeatCell['level'] {
   if (words <= 0) return 0;
   if (words < 100) return 1;
@@ -107,8 +107,8 @@ export function heatLevel(words: number): HeatCell['level'] {
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
- * Lưới 53 cột (tuần, thứ Hai → Chủ nhật), cột cuối là tuần này.
- * `months`: nhãn tháng đặt ở cột có ngày 1 của tháng đó.
+ * 53-column grid (weeks, Monday → Sunday), the last column is this week.
+ * `months`: month labels sit in the column holding that month's 1st.
  */
 export function buildHeatmap(
   entries: Entry[],
@@ -134,7 +134,7 @@ export function buildHeatmap(
 
 // ---- On this day / random ----
 
-/** Bài cùng ngày-tháng của những năm trước, gần nhất trước. */
+/** Entries on the same month-day in earlier years, most recent first. */
 export function onThisDay(entries: Entry[], today: string): { date: string; years: number; line: string }[] {
   const md = monthDay(today);
   const year = Number(today.slice(0, 4));
@@ -144,7 +144,7 @@ export function onThisDay(entries: Entry[], today: string): { date: string; year
     .map((e) => ({ date: e.date, years: year - Number(e.date.slice(0, 4)), line: firstLine(e.text) }));
 }
 
-/** Một ngày đã viết bất kỳ, khác hôm nay. `rand` trong [0, 1). */
+/** Any written day other than today. `rand` in [0, 1). */
 export function randomDay(entries: Entry[], today: string, rand: number): string | null {
   const pool = entries.filter((e) => e.date !== today && hasWords(e));
   if (pool.length === 0) return null;
@@ -154,9 +154,9 @@ export function randomDay(entries: Entry[], today: string, rand: number): string
 // ---- Search ----
 
 /**
- * Bỏ dấu + chữ thường, GIỮ NGUYÊN độ dài chuỗi: ký tự thứ i của bản gập ứng
- * với ký tự thứ i của bản gốc, nên vị trí khớp dùng thẳng để tô chữ gốc.
- * "Nhật ký" → "nhat ky", "Đà" → "da".
+ * Strip accents + lowercase, KEEPING the string length: character i of the
+ * folded string matches character i of the original, so match positions
+ * highlight the original directly. "Nhật ký" → "nhat ky", "Đà" → "da".
  */
 export function fold(s: string): string {
   let out = '';
@@ -167,7 +167,7 @@ export function fold(s: string): string {
     }
     const base = ch.normalize('NFD').replace(/[̀-ͯ]/g, '');
     const one = (base[0] ?? ch).toLowerCase();
-    // Ký tự ngoài BMP (emoji) dài 2 code unit: giữ đúng độ dài.
+    // Characters outside the BMP (emoji) are 2 code units: keep the length.
     out += one.length === ch.length ? one : ch;
   }
   return out;
@@ -177,7 +177,7 @@ export function queryTerms(query: string): string[] {
   return fold(query).split(/\s+/).filter(Boolean);
 }
 
-/** Mọi vị trí khớp [start, end) của các từ khoá trong text, đã sắp xếp. */
+/** Every match [start, end) of the keywords in text, sorted. */
 export function findMatches(text: string, terms: string[]): [number, number][] {
   const hay = fold(text);
   const out: [number, number][] = [];
@@ -194,7 +194,7 @@ export function findMatches(text: string, terms: string[]): [number, number][] {
 export type SearchHit = {
   kind: 'entry' | 'review';
   id: string;
-  /** Ngày để sắp xếp (review: ngày cuối kỳ). */
+  /** Date used for sorting (review: last day of the period). */
   date: string;
   before: string;
   match: string;
@@ -203,7 +203,7 @@ export type SearchHit = {
 
 const SNIPPET_SIDE = 48;
 
-/** Bài nào chứa TẤT CẢ từ khoá. Mới nhất trước. Snippet quanh chỗ khớp đầu tiên. */
+/** Pages containing ALL keywords. Newest first. Snippet around the first match. */
 export function search(entries: Entry[], reviews: Review[], query: string, limit = 50): SearchHit[] {
   const terms = queryTerms(query);
   if (terms.length === 0) return [];

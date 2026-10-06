@@ -7,7 +7,7 @@ import { uidHintStore, useAuth } from '@/contexts/AuthContext';
 
 const UidContext = createContext<string | null>(null);
 
-/** uid của người đang viết. Chỉ dùng bên trong <AuthGate>. */
+/** uid of the writer. Only use inside <AuthGate>. */
 export function useUid(): string {
   const uid = useContext(UidContext);
   if (!uid) throw new Error('useUid must be used inside <AuthGate>.');
@@ -15,11 +15,11 @@ export function useUid(): string {
 }
 
 /**
- * Cổng đăng nhập cho mọi trang trong (main).
+ * Sign-in gate for every page in (main).
  *
- * Có uid của lần trước (uidHintStore) thì hiện trang ngay, không chờ Firebase
- * Auth. Nếu hoá ra đã đăng xuất thì mới chuyển sang /login. Không bao giờ có
- * spinner: trong lúc chờ chỉ là trang giấy trống.
+ * With last session's uid (uidHintStore), the page shows at once, without
+ * waiting for Firebase Auth. Only if the user turns out to be signed out does
+ * it go to /login. Never a spinner: while waiting it is just a blank page.
  */
 export default function AuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();

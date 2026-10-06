@@ -1,11 +1,11 @@
-/** users/{uid}/entries/{YYYY-MM-DD} - một ngày là một doc. */
+/** users/{uid}/entries/{YYYY-MM-DD} - one day is one doc. */
 export type Entry = {
   date: string;
   /** 'MM-DD', cho "On this day". */
   md: string;
   text: string;
   words: number;
-  /** Câu hỏi đang hiện khi bắt đầu viết trang này (null = không dùng). */
+  /** The question on screen when this page was started (null = none). */
   prompt: string | null;
   createdAt: number;
   updatedAt: number;
@@ -21,6 +21,6 @@ export type Review = {
   updatedAt: number;
 };
 
-/** Trạng thái lưu, hiện bằng một chấm nhỏ.
- *  idle: chưa có gì để lưu · local: đã lưu trên máy, chưa lên cloud · synced: đã lên cloud. */
+/** Save status, shown as a small dot.
+ *  idle: nothing to save · local: saved on this device, not in the cloud · synced: in the cloud. */
 export type SaveStatus = 'idle' | 'local' | 'synced';

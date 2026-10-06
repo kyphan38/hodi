@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 
 import DayView from '@/components/DayView';
 
-// Ngày nằm ở ?d=… vì web tĩnh không có route động tuỳ ý.
-// useSearchParams cần một Suspense boundary khi prerender.
+// The day lives in ?d=… because a static site has no dynamic routes.
+// useSearchParams needs a Suspense boundary when prerendering.
 export default function DayPage() {
   return (
     <Suspense>

@@ -1,12 +1,12 @@
 // ============================================================
-// hodi - Firebase client SDK (chỉ chạy trên trình duyệt)
+// hodi - Firebase client SDK (browser only)
 //
-// Khác fina: khởi tạo LƯỜI (gọi hàm mới tạo), không ném lỗi lúc import.
-// hodi là web tĩnh - mọi trang được prerender lúc build, và lúc đó module này
-// vẫn bị nạp. Ném lỗi ở top-level sẽ làm hỏng build khi thiếu env.
+// Unlike fina: LAZY init (created on first call), never throws on import.
+// hodi is a static site - every page is prerendered at build, and this module
+// still loads then. A top-level throw would break the build when env is missing.
 //
-// NEXT_PUBLIC_USE_EMULATORS=1 (npm run dev:emu) nối vào Auth/Firestore
-// emulator với project giả 'demo-hodi' - chạy được mà không cần project thật.
+// NEXT_PUBLIC_USE_EMULATORS=1 (npm run dev:emu) connects to the Auth/Firestore
+// emulators with the fake project 'demo-hodi' - runs without a real project.
 // ============================================================
 
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
@@ -24,13 +24,13 @@ import {
 export const USE_EMULATORS = process.env.NEXT_PUBLIC_USE_EMULATORS === '1';
 
 /**
- * Trên domain thật, authDomain = chính domain của app (vercel.json proxy
- * /__/auth/* sang firebaseapp.com). Nếu để firebaseapp.com, Safari trên iPhone,
- * iPad coi đó là domain bên thứ ba và chặn storage, nên đăng nhập Google không
- * báo kết quả về được (auth/popup-closed-by-user).
+ * On the real domain, authDomain = the app's own domain (vercel.json proxies
+ * /__/auth/* to firebaseapp.com). With firebaseapp.com, Safari on iPhone and
+ * iPad treats it as third-party and blocks storage, so Google sign-in cannot
+ * report back (auth/popup-closed-by-user).
  *
- * localhost và preview *.vercel.app giữ firebaseapp.com: các host đó chưa có
- * redirect URI trong Google OAuth client.
+ * localhost and *.vercel.app previews keep firebaseapp.com: those hosts have
+ * no redirect URI in the Google OAuth client yet.
  */
 function resolveAuthDomain(): string | undefined {
   const fallback = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -40,7 +40,7 @@ function resolveAuthDomain(): string | undefined {
   return host;
 }
 
-// Next.js chỉ inline được biến NEXT_PUBLIC_* khi viết đầy đủ, không destructure.
+// Next.js only inlines NEXT_PUBLIC_* vars written out in full, not destructured.
 const realConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: resolveAuthDomain(),
@@ -57,7 +57,7 @@ const emulatorConfig = {
   appId: 'demo-app',
 };
 
-/** Thiếu biến env nào (rỗng = đủ). Màn hình login dùng để báo lỗi rõ ràng. */
+/** Which env vars are missing (empty = all set). The login screen uses it for a clear error. */
 export function missingConfig(): string[] {
   if (USE_EMULATORS) return [];
   return Object.entries(realConfig)
@@ -90,12 +90,12 @@ export function getDb(): Firestore {
   if (db) return db;
   const firebase = getFirebaseApp();
   try {
-    // Offline-first: viết được khi mất sóng, tự sync khi có mạng lại.
+    // Offline-first: write with no signal, sync when back online.
     db = initializeFirestore(firebase, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     });
   } catch (err) {
-    // Safari private mode chặn IndexedDB → cache trong RAM.
+    // Safari private mode blocks IndexedDB → in-memory cache.
     console.warn('[firebase] persistent cache unavailable, using memory cache', err);
     try {
       db = initializeFirestore(firebase, { localCache: memoryLocalCache() });

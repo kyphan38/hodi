@@ -6,8 +6,8 @@ import PrivacyVeil from '@/components/PrivacyVeil';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import { BG_DARK, BG_LIGHT, THEME_SCRIPT } from '@/lib/prefs';
 
-// Tiêu đề tab luôn là "hodi" - không bao giờ lộ ngày hay nội dung (riêng tư
-// khi chia sẻ màn hình). Không trang nào đặt title riêng.
+// The tab title is always "hodi" - never a date or content (private when
+// sharing a screen). No page sets its own title.
 export const metadata: Metadata = {
   title: 'hodi',
   description: 'A quiet daily journal',
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Không khoá zoom như fina: đây là app đọc/viết, phóng to là quyền của mắt.
-  // Chữ nhập >= 16px nên iOS không tự zoom khi focus.
+  // No zoom lock like fina: this is a reading/writing app, zoom belongs to the eyes.
+  // Inputs are >= 16px, so iOS does not zoom on focus.
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    // data-theme/data-size do THEME_SCRIPT đặt trước khi React hydrate.
+    // data-theme/data-size are set by THEME_SCRIPT before React hydrates.
     <html lang="en" data-size="m" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />

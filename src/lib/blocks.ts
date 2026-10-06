@@ -1,32 +1,33 @@
 // ============================================================
-// hodi - Một ngày = nhiều khối, lưu thành MỘT trang chữ thô
+// hodi - One day = several blocks, saved as ONE raw text page
 //
 //   · 08:10
 //   › What drained you today?
-//   Họp dài, mệt.
+//   Long meeting, tired.
 //
 //   · 21:40
-//   Một tách cà phê ngon.            ← free write: không có dòng câu hỏi
+//   A good cup of coffee.            ← free write: no question line
 //
-// Mỗi khối: dòng giờ (lúc bắt đầu viết khối), dòng câu hỏi nếu có, rồi chữ.
-// Các khối cách nhau bằng một dòng trống. Vẫn là text thường, nên export,
-// search, heatmap, đếm chữ không phải đổi gì.
+// Each block: a time line (when the block was started), a question line if
+// any, then the text. Blocks are separated by a blank line. Still plain text,
+// so export, search, heatmap and word count need no change.
 //
-// parseBlocks(serializeBlocks(x)) phải trả lại đúng x, kể cả dòng trống ở cuối
-// chữ đang gõ - nếu không, Enter ở cuối khối sẽ bị "nuốt" khi lưu.
-// File thuần.
+// parseBlocks(serializeBlocks(x)) must return exactly x, including blank lines
+// at the end of the text being typed - otherwise Enter at the end of a block
+// gets "swallowed" on save.
+// Pure file.
 // ============================================================
 
 import { STAMP_RE, QUESTION_RE } from '@/lib/day';
 
 export type Block = {
-  /** 'HH:MM' - null với chữ cũ viết trước khi có khối. */
+  /** 'HH:MM' - null for old text written before blocks existed. */
   time: string | null;
   question: string | null;
   body: string;
 };
 
-/** Ranh giới khối: dòng trống rồi một dòng giờ. */
+/** Block boundary: a blank line, then a time line. */
 const BOUNDARY = /\n\n(?=· \d{2}:\d{2}(?:\n|$))/;
 
 function parseChunk(chunk: string): Block {
@@ -58,7 +59,7 @@ export function serializeBlocks(blocks: Block[]): string {
   return blocks.map((b) => header(b) + b.body).join('\n\n');
 }
 
-/** Các câu hỏi đã trả lời trong ngày - để "another" không gợi lại. */
+/** Questions answered today - so "another" does not suggest them again. */
 export function answered(blocks: Block[]): Set<string> {
   return new Set(blocks.filter((b) => b.question).map((b) => b.question as string));
 }

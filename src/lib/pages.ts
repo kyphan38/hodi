@@ -1,10 +1,10 @@
 // ============================================================
-// hodi - Đọc/ghi một trang trên Firestore
+// hodi - Read/write one page in Firestore
 //
 // users/{uid}/entries/{YYYY-MM-DD}, users/{uid}/reviews/{period}.
-// Ghi không await: offline thì promise treo tới khi có mạng, nhưng dữ liệu đã
-// nằm trong cache trên máy ngay lập tức. Trạng thái "đã lên cloud" đọc từ
-// metadata.hasPendingWrites của snapshot, không từ promise.
+// Writes are not awaited: offline the promise hangs until the network returns,
+// but the data is in the local cache at once. "In the cloud" status comes from
+// the snapshot's metadata.hasPendingWrites, not from the promise.
 // ============================================================
 
 import { doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
@@ -31,8 +31,8 @@ export function watchPage(
 
 export function writePage(uid: string, key: PageKey, data: PageData): void {
   setDoc(pageRef(uid, key), data).catch((err) => {
-    // Bị rules từ chối (sai email, sai shape). Chữ vẫn còn trong nháp
-    // localStorage, nên không mất - chỉ ghi log.
+    // Rejected by rules (wrong email, wrong shape). The text is still in the
+    // localStorage draft, so nothing is lost - just log it.
     console.error('[pages] write failed', err);
   });
 }

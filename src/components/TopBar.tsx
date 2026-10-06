@@ -10,8 +10,8 @@ export type Place = 'today' | 'days' | 'settings';
 const HREF: Record<Place, string> = { today: '/', days: '/days/', settings: '/settings/' };
 
 /**
- * Thanh trên cùng thay cho tab bar: nhãn bên trái, vài chữ nhỏ bên phải.
- * Mờ đi khi đang gõ (chỉ còn trang giấy), hiện lại khi cuộn hoặc chạm ra ngoài.
+ * Top bar instead of a tab bar: label on the left, a few small words on the right.
+ * Fades while typing (only the page remains), returns on scroll or a tap outside.
  */
 export default function TopBar({ current, left }: { current: Place | null; left?: ReactNode }) {
   const typing = useSyncExternalStore(typingStore.subscribe, typingStore.get, typingStore.getServer);

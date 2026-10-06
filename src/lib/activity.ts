@@ -1,9 +1,9 @@
 // ============================================================
-// hodi - Đang gõ hay không
+// hodi - Typing or not
 //
-// Chỉ sống trong RAM. Dùng cho hai việc:
-// - typingStore: các link góc trên mờ đi khi đang gõ.
-// - lastInputAt: Today chỉ tự sang ngày mới khi đã lâu không gõ.
+// RAM only. Used for two things:
+// - typingStore: the top corner links fade while typing.
+// - lastInputAt: Today only moves to the new day after a long typing pause.
 // ============================================================
 
 import { memoryStore } from '@/lib/store';

@@ -6,7 +6,7 @@ import { markInput, typingStore } from '@/lib/activity';
 import { caretTop } from '@/lib/caret';
 import { typewriterStore } from '@/lib/prefs';
 
-/** Chế độ máy đánh chữ: dòng đang gõ nằm ở khoảng này tính từ đỉnh màn hình. */
+/** Typewriter mode: the current line sits this far from the top of the screen. */
 const TYPEWRITER_LINE = 0.42;
 
 type Props = {
@@ -19,9 +19,9 @@ type Props = {
 };
 
 /**
- * Textarea thuần, tự cao theo nội dung (cả trang cuộn, không phải ô viết).
- * ::after của .grow chứa cùng nội dung và đẩy khung cao lên - không đo bằng JS.
- * Bật chế độ máy đánh chữ thì dòng đang gõ được giữ gần giữa màn hình.
+ * Plain textarea that grows with its content (the page scrolls, not the box).
+ * ::after of .grow holds the same content and pushes the box taller - no JS.
+ * In typewriter mode the current line stays near the middle of the screen.
  */
 export default function GrowText({ value, onChange, placeholder, label, onKeyDown, textareaRef }: Props) {
   const typewriter =
@@ -43,7 +43,7 @@ export default function GrowText({ value, onChange, placeholder, label, onKeyDow
   return (
     <div className="grow" data-value={value || placeholder || ''}>
       {typewriter && focused && (
-        // Các dòng phía trên dòng đang gõ mờ nhẹ đi.
+        // Lines above the current one fade slightly.
         <div
           aria-hidden
           className="pointer-events-none fixed inset-x-0 top-0 h-[40dvh] bg-linear-to-b from-bg to-transparent transition-opacity duration-700"

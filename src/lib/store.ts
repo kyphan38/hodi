@@ -1,12 +1,12 @@
 // ============================================================
-// hodi - Store nhỏ cho useSyncExternalStore
+// hodi - Small stores for useSyncExternalStore
 //
-// Cùng cách với fina/src/lib/prefs.ts: đọc localStorage trong useEffect gây
-// hydration mismatch và React 19 cấm setState thẳng trong effect.
-// useSyncExternalStore: server dùng giá trị mặc định, client đọc giá trị thật
-// ngay sau khi hydrate.
+// Same approach as fina/src/lib/prefs.ts: reading localStorage in useEffect
+// causes a hydration mismatch, and React 19 forbids setState directly in an
+// effect. With useSyncExternalStore the server uses the default and the
+// client reads the real value right after hydration.
 //
-// Mọi truy cập storage đều bọc try/catch: Safari private mode ném lỗi.
+// Every storage access is wrapped in try/catch: Safari private mode throws.
 // ============================================================
 
 type Listener = () => void;
@@ -18,7 +18,7 @@ export type Store<T> = {
   set(next: T): void;
 };
 
-/** Giá trị chỉ sống trong RAM (vd: đang gõ hay không). */
+/** A value that lives only in RAM (e.g. typing or not). */
 export function memoryStore<T>(initial: T): Store<T> {
   const listeners = new Set<Listener>();
   let value = initial;
@@ -37,7 +37,7 @@ export function memoryStore<T>(initial: T): Store<T> {
   };
 }
 
-/** Chuỗi lưu trong localStorage (theo máy) hoặc sessionStorage (theo phiên). */
+/** A string in localStorage (per device) or sessionStorage (per session). */
 export function stringStore<T extends string>(
   key: string,
   fallback: T,
@@ -69,7 +69,7 @@ export function stringStore<T extends string>(
       try {
         storage().setItem(key, next);
       } catch {
-        // bỏ qua
+        // ignore
       }
       listeners.forEach((fn) => fn());
     },
@@ -90,11 +90,11 @@ export function writeJson(key: string, value: unknown): void {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // bỏ qua
+    // ignore
   }
 }
 
-/** Xoá mọi key của hodi (khi sign out). */
+/** Removes every hodi key (on sign out). */
 export function clearHodiStorage(): void {
   for (const storage of [() => localStorage, () => sessionStorage]) {
     try {
@@ -103,7 +103,7 @@ export function clearHodiStorage(): void {
         .filter((k) => k.startsWith('hodi.'))
         .forEach((k) => s.removeItem(k));
     } catch {
-      // bỏ qua
+      // ignore
     }
   }
 }

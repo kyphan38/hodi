@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'hodi',
     short_name: 'hodi',
     description: 'A quiet daily journal',
-    // Mở thẳng vào trang hôm nay. Đó là lý do app tồn tại.
+    // Open straight into today's page. That is why the app exists.
     start_url: '/',
     scope: '/',
     display: 'standalone',

@@ -2,21 +2,21 @@
 
 /* ============================================================
    hodi - design tokens
-   "Tờ giấy": một màu nền xám trung tính (không pha màu), chữ, không card,
-   không viền. Đã thử nền kem/nâu ấm - nhìn "sến", bỏ (2026-10-05).
-   Font hệ thống, không web font (cùng nguyên tắc với fina).
-   Đơn sắc: độ đậm heatmap là chỗ duy nhất "màu" mang nghĩa.
+   "A sheet of paper": one neutral gray background (no tint), text, no cards,
+   no borders. A warm cream/brown background looked too sweet, dropped (2026-10-05).
+   System font, no web font (same rule as fina).
+   Monochrome: heatmap weight is the only "color" that carries meaning.
    ============================================================ */
 
 :root {
   --bg: #fafafa;
   --ink: #171717;
   --muted: #555555; /* ~7.2:1 */
-  --faint: #8a8a8a; /* ~3.3:1 - chữ phụ, nhãn */
+  --faint: #8a8a8a; /* ~3.3:1 - secondary text, labels */
   --line: #e5e5e5;
   --wash: rgb(23 23 23 / 0.06);
   --select: rgb(23 23 23 / 0.14);
-  --heat: 23 23 23; /* rgb của mực, dùng với độ mờ */
+  --heat: 23 23 23; /* ink rgb, used with opacity */
   --text-size: 18px;
   color-scheme: light;
 }
@@ -89,7 +89,7 @@ a {
   touch-action: manipulation;
 }
 
-/* Viền focus chỉ khi dùng bàn phím, không khi chạm. */
+/* Focus ring only for keyboard use, not for touch. */
 :focus {
   outline: none;
 }
@@ -99,7 +99,7 @@ a {
   border-radius: 2px;
 }
 
-/* Cột chữ: hẹp ở giữa trên Mac, 20px lề trên iPhone. */
+/* Text column: narrow and centered on Mac, 20px margins on iPhone. */
 .paper {
   width: 100%;
   max-width: 36rem;
@@ -107,7 +107,7 @@ a {
   padding: calc(env(safe-area-inset-top) + 20px) 20px 0;
 }
 
-/* Chữ khi viết và khi đọc lại. */
+/* Text while writing and while reading back. */
 .page-text {
   font-size: var(--text-size);
   line-height: 1.7;
@@ -115,9 +115,10 @@ a {
   white-space: pre-wrap;
 }
 
-/* Textarea tự cao theo nội dung mà không đo bằng JS: ::after chứa cùng nội
-   dung, nằm chồng cùng ô grid và đẩy khung cao lên. Đo bằng JS (height=auto
-   rồi scrollHeight) làm trang giật mỗi lần gõ vì tài liệu co lại một nhịp. */
+/* The textarea grows with its content without JS: ::after holds the same
+   content in the same grid cell and pushes the box taller. Measuring in JS
+   (height=auto, then scrollHeight) jumps the page on every key, because the
+   document shrinks for a frame. */
 .grow {
   display: grid;
 }
@@ -152,12 +153,12 @@ a {
   outline: none;
 }
 
-/* Che chữ khi app bị ẩn: màn hình đổi app của iPhone không lộ nhật ký. */
+/* Hide the text when the app is hidden: the iPhone app switcher shows nothing. */
 html.veiled body {
   filter: blur(18px);
 }
 
-/* Chấm trạng thái: sáng lên khi vừa lưu rồi mờ dần. */
+/* Status dot: lights up on save, then fades. */
 @keyframes settle {
   0%,
   55% {

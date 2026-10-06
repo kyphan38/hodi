@@ -1,12 +1,12 @@
 // ============================================================
-// hodi - Review tuần / tháng
+// hodi - Weekly / monthly review
 //
-// Cuối tuần, cuối tháng app hỏi nhẹ một câu, bằng một dòng mờ trên trang hôm
-// nay. Không thông báo, không nhắc lại. Viết hay không là tuỳ.
+// At week and month end the app asks one gentle question, as a faint line on
+// today's page. No notification, no repeat. Writing it is optional.
 //
-// - Tuần: Chủ nhật (tuần này) và thứ Hai (tuần trước).
-// - Tháng: ngày cuối tháng (tháng này) và hai ngày đầu tháng (tháng trước).
-// File thuần.
+// - Week: Sunday (this week) and Monday (last week).
+// - Month: the last day of the month (this month) and the first two days (last month).
+// Pure file.
 // ============================================================
 
 import { addDays, dayTiny, isoWeek, monthLabel, monthOf, parseDay, weekMonday } from '@/lib/day';
@@ -24,7 +24,7 @@ export function reviewKind(period: string): ReviewKind | null {
 
 export function reviewInvites(today: string): ReviewInvite[] {
   const out: ReviewInvite[] = [];
-  const dow = parseDay(today).getDay(); // 0 = Chủ nhật
+  const dow = parseDay(today).getDay(); // 0 = Sunday
   if (dow === 0) out.push({ kind: 'week', period: isoWeek(today), text: 'This week: what is worth remembering?' });
   if (dow === 1) {
     out.push({ kind: 'week', period: isoWeek(addDays(today, -1)), text: 'Last week: what is worth remembering?' });
@@ -40,7 +40,7 @@ export function reviewInvites(today: string): ReviewInvite[] {
   return out;
 }
 
-/** Các ngày thuộc kỳ review, cũ nhất trước. */
+/** Days in the review period, oldest first. */
 export function periodDays(period: string): string[] {
   if (WEEK_RE.test(period)) {
     const mon = weekMonday(period);
@@ -51,7 +51,7 @@ export function periodDays(period: string): string[] {
   return days;
 }
 
-/** 'Week of 28 Sep' / 'October 2026' - nhãn đầu trang review. `withYear` cho file export. */
+/** 'Week of 28 Sep' / 'October 2026' - review page label. `withYear` for the export file. */
 export function reviewTitle(period: string, withYear = false): string {
   if (!WEEK_RE.test(period)) return monthLabel(period);
   const monday = weekMonday(period);

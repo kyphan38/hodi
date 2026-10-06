@@ -21,8 +21,8 @@ import { askedIn } from '@/lib/questions';
 import type { Entry } from '@/types/hodi';
 
 /**
- * Một ngày đã qua. Mặc định là chế độ đọc; "edit" (hoặc ⌘E) mở cùng editor
- * như trang hôm nay. Hôm nay thì chuyển thẳng về "/".
+ * A past day. Read mode by default; "edit" (or ⌘E) opens the same editor as
+ * today's page. Today goes straight to "/".
  */
 export default function DayView() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function DayView() {
   if (!valid) return <Message text="This page does not exist." />;
   if (day === today) return null;
   if (day > today) return <Message day={day} text="Not yet." />;
-  // key: đổi ngày là dựng lại từ đầu (hook lưu gắn với một trang).
+  // key: a new day rebuilds from scratch (the save hook is tied to one page).
   return <PastDay key={day} day={day} query={query} />;
 }
 
@@ -53,9 +53,9 @@ function Message({ day, text }: { day?: string; text: string }) {
   );
 }
 
-/** Ngày đã viết liền trước / liền sau (bỏ qua ngày trống), như lật trang sổ. */
+/** Previous / next written day (skips empty days), like turning pages. */
 function neighbors(entries: Entry[], day: string, today: string): { older: string | null; newer: string | null } {
-  // entries: mới nhất trước.
+  // entries: newest first.
   const written = entries.filter((e) => hasWords(e) && e.date !== today);
   const older = written.find((e) => e.date < day)?.date ?? null;
   const newer = [...written].reverse().find((e) => e.date > day)?.date ?? null;
@@ -64,7 +64,7 @@ function neighbors(entries: Entry[], day: string, today: string): { older: strin
 
 const dayHref = (d: string, today: string) => (d === today ? '/' : `/day/?d=${d}`);
 
-/** Vuốt ngang đủ dài và đủ thẳng mới tính. Bỏ qua cú vuốt bắt đầu sát mép (vuốt back của iOS). */
+/** A swipe counts only if long and straight enough. Ignore swipes from the edge (iOS back). */
 const SWIPE_MIN = 60;
 const EDGE = 24;
 
@@ -108,7 +108,7 @@ function PastDay({ day, query }: { day: string; query: string | null }) {
       const dy = t.clientY - start.y;
       start = null;
       if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < 2 * Math.abs(dy)) return;
-      // Như lật sổ: kéo trang sang trái = trang sau (mới hơn).
+      // Like a notebook: drag the page left = next (newer) page.
       go(dx < 0 ? newer : older);
     };
 
@@ -123,7 +123,7 @@ function PastDay({ day, query }: { day: string; query: string | null }) {
   }, [editing, older, newer, today, router]);
 
   const editedOn = entry && dayOf(entry.updatedAt) > day ? dayTiny(dayOf(entry.updatedAt)) : null;
-  // Câu hỏi giờ nằm ngay trong trang ("› …"); chỉ in riêng khi trang không có dòng câu hỏi nào.
+  // Questions now live in the page ("› …"); print one only when the page has no question line.
   const oldPrompt = entry?.prompt && askedIn(entry.text).size === 0 ? entry.prompt : null;
 
   return (

@@ -1,23 +1,24 @@
 // ============================================================
-// hodi - Nháp dự phòng trong localStorage
+// hodi - Backup draft in localStorage
 //
-// Lưới an toàn thứ hai sau cache Firestore (nguyên tắc #4: không bao giờ mất
-// chữ). Mỗi lần gõ là ghi nháp ngay, không debounce.
+// Second safety net after the Firestore cache (rule #4: never lose text).
+// Every keystroke writes the draft at once, no debounce.
 //
-// Nó cũng giúp mở app "có chữ ngay": nháp của trang hiện ra trước cả khi
-// Firestore kịp đọc cache.
+// It also makes the app open "with text at once": the page's draft shows
+// before Firestore has read its cache.
 //
-// Chỉ giữ nháp của trang đang viết + những nháp CHƯA lên cloud; nháp đã sync
-// của trang khác bị dọn mỗi lần ghi. Sign out thì xoá sạch (clearHodiStorage).
+// Keeps only the current page's draft + drafts NOT yet in the cloud; synced
+// drafts of other pages are cleaned on each write. Sign out clears everything
+// (clearHodiStorage).
 // ============================================================
 
 import { readJson, writeJson } from '@/lib/store';
 
 export type Draft = {
   text: string;
-  /** epoch ms lần gõ cuối trên máy này. */
+  /** epoch ms of the last keystroke on this device. */
   at: number;
-  /** true khi Firestore xác nhận text này đã lên server. */
+  /** true once Firestore confirms this text reached the server. */
   synced: boolean;
 };
 
@@ -35,7 +36,7 @@ export function writeDraft(id: string, draft: Draft): void {
       if (readJson<Draft>(k)?.synced) localStorage.removeItem(k);
     }
   } catch {
-    // bỏ qua
+    // ignore
   }
 }
 

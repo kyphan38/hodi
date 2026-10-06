@@ -22,7 +22,7 @@ function useStore<T>(store: Store<T>): T {
   return useSyncExternalStore(store.subscribe, store.get, store.getServer);
 }
 
-/** Một dòng lựa chọn: lựa chọn hiện tại là chữ đậm, còn lại là chữ mờ bấm được. */
+/** One option row: the current choice is bold, the others are faint and clickable. */
 function Choice<T extends string>({
   label,
   options,
@@ -64,8 +64,8 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /**
- * Tải file về máy. Thu hồi URL ngay là hỏng file trên Safari - nó đọc blob
- * sau khi hàm đã chạy xong (cùng cách với logi/src/components/ExportSheet.tsx).
+ * Downloads a file. Revoking the URL right away breaks the file in Safari - it
+ * reads the blob after this function returns (same as logi/src/components/ExportSheet.tsx).
  */
 function save(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -165,7 +165,7 @@ export default function SettingsView() {
           </button>
         </Row>
         <p className="mt-2 text-[13px] leading-relaxed text-faint">
-          Signing out also clears the copy of your journal saved on this device.
+          Also clears the copy on this device.
         </p>
       </section>
     </main>

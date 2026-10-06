@@ -1,6 +1,6 @@
 "use client";
 
-// Chép từ cogi/web/src/lib/hooks/useSaveOnLeave.ts.
+// Copied from cogi/web/src/lib/hooks/useSaveOnLeave.ts.
 
 import { useEffect, useState } from "react";
 

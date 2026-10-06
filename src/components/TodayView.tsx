@@ -27,7 +27,7 @@ import { entryKey } from '@/lib/page-data';
 import { questionsStore } from '@/lib/prefs';
 import { nextQuestion } from '@/lib/questions';
 
-/** Đang mở sẵn qua 04:00: chỉ tự sang trang mới khi đã lâu không gõ. */
+/** Left open past 04:00: only move to the new page after a long typing pause. */
 const IDLE_MS = 10 * 60_000;
 
 export function scrollToTop() {
@@ -35,8 +35,8 @@ export function scrollToTop() {
 }
 
 /**
- * Trang hôm nay. Tự sang ngày mới khi app quay lại foreground sau 04:00
- * (chữ của hôm trước được flush khi trang cũ unmount - không mất gì).
+ * Today's page. Moves to the new day when the app returns to the foreground
+ * after 04:00 (yesterday's text is flushed when the old page unmounts - nothing lost).
  */
 export default function TodayView() {
   const uid = useUid();
@@ -68,7 +68,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     useSyncExternalStore(questionsStore.subscribe, questionsStore.get, questionsStore.getServer) === 'on';
   const [skip, setSkip] = useState(0);
   const [freeWrite, setFreeWrite] = useState(false);
-  // Khối đang mở. null = chưa viết gì cho khối mới (đang hiện câu hỏi gợi ý).
+  // The open block. null = nothing written in the new block yet (showing the prompt question).
   const [editing, setEditing] = useState<number | null>(null);
   const [flash, setFlash] = useState(0);
   const activeRef = useRef<HTMLTextAreaElement>(null);
@@ -83,7 +83,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     firstQuestion.current = blocks.find((b) => b.question)?.question ?? null;
   }, [blocks]);
 
-  // Câu gợi ý: câu tiếp theo chưa trả lời hôm nay. "another" đi tiếp một câu.
+  // Prompt: the next question not answered today. "another" moves one on.
   const suggestion = nextQuestion(day, answered(blocks), skip);
   const composing = editing === null;
   const activeQuestion = composing ? (questionsOn && !freeWrite ? suggestion.question : null) : blocks[editing]?.question;
@@ -93,14 +93,14 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   const onActiveChange = (value: string) => {
     if (composing) {
       if (value === '') return;
-      // Chữ đầu tiên mở một khối mới, ghi giờ lúc bắt đầu viết.
+      // The first character opens a new block, stamped with the start time.
       const block: Block = { time: timeLabel(Date.now()), question: activeQuestion, body: value };
       setEditing(blocks.length);
       write([...blocks, block]);
       return;
     }
-    // Xoá hết chữ của khối mới nhất → bỏ khối đó, quay về như lúc đầu
-    // (câu hỏi + "another · free write"). Cùng một textarea nên không mất focus.
+    // Clearing the newest block's text → drop the block, back to the start
+    // (question + "another · free write"). Same textarea, so focus stays.
     if (value === '' && editing === last) {
       setEditing(null);
       write(blocks.slice(0, -1));
@@ -109,7 +109,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     write(blocks.map((b, i) => (i === editing ? { ...b, body: value } : b)));
   };
 
-  /** "done": khép khối lại (khối không có chữ thì bỏ), câu tiếp theo hiện ra. */
+  /** "done": close the block (drop it if empty), the next question appears. */
   const done = () => {
     if (editing === null) return;
     const kept = blocks.filter((b, i) => i !== editing || b.body.trim() !== '');
@@ -120,7 +120,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     setFocusAsk((n) => n + 1);
   };
 
-  // Focus sau khi ô viết đã gắn vào trang (mở một khối cũ, hay vừa "done").
+  // Focus once the field is in the page (reopening an old block, or just after "done").
   const [focusAsk, setFocusAsk] = useState(0);
   useEffect(() => {
     if (focusAsk === 0) return;
@@ -142,7 +142,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     setFlash((n) => n + 1);
   });
 
-  // Mở app → con trỏ ở ô viết khối mới. Trang dài thì cuộn xuống tới đó.
+  // App opens → caret in the new block's field. On a long page, scroll down to it.
   const focusedOnce = useRef(false);
   useEffect(() => {
     if (!page.loaded || focusedOnce.current) return;
@@ -169,7 +169,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
       {blocks.length > 0 && (
         <ol className="mt-8 space-y-1">
           {blocks.map((b, i) => {
-            // Khối cuối đang mở nằm ở ô viết bên dưới (giữ nguyên textarea, không mất focus).
+            // The last open block is in the field below (same textarea, focus stays).
             if (i === editing && i === last) return null;
             if (i === editing) {
               return (
@@ -254,7 +254,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   );
 }
 
-/** Một khối đang viết: câu hỏi mờ phía trên (không biến mất khi gõ), ô viết, rồi "done". */
+/** A block being written: faint question above (stays while typing), the field, then "done". */
 function BlockEditor({
   block,
   placeholder,

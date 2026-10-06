@@ -1,11 +1,11 @@
 'use client';
 
 // ============================================================
-// hodi - Toàn bộ cuốn sổ, nạp một lần cho cả phiên
+// hodi - The whole journal, loaded once per session
 //
-// Một listener cho entries, một cho reviews, đặt ở (main)/layout nên chuyển
-// qua lại Today/Days/Day không nghe lại từ đầu. ~365 doc/năm - xa giới hạn
-// 50k reads/ngày. Trang hôm nay KHÔNG chờ cái này: nó đọc doc của mình riêng.
+// One listener for entries, one for reviews, set in (main)/layout so moving
+// between Today/Days/Day does not re-subscribe. ~365 docs/year - far below the
+// 50k reads/day limit. Today's page does NOT wait for this: it reads its own doc.
 // ============================================================
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
@@ -16,10 +16,10 @@ import { getDb } from '@/lib/firebase-client';
 import type { Entry, Review } from '@/types/hodi';
 
 type Journal = {
-  /** Mới nhất trước. */
+  /** Newest first. */
   entries: Entry[];
   reviews: Review[];
-  /** Cả hai listener đã có snapshot đầu tiên. */
+  /** Both listeners have their first snapshot. */
   loaded: boolean;
 };
 

@@ -8,19 +8,19 @@ type Props = {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;
-  /** Snapshot đầu tiên đã về: lúc này mới đặt con trỏ về cuối. */
+  /** First snapshot is in: only now place the caret at the end. */
   loaded: boolean;
-  /** Đặt con trỏ ở cuối bài khi mở trang. */
+  /** Put the caret at the end when the page opens. */
   focusOnLoad?: boolean;
   label: string;
-  /** Hiện ngay dưới chữ (vd: "done"). */
+  /** Shown right under the text (e.g. "done"). */
   below?: ReactNode;
 };
 
 /**
- * Sửa cả một trang thô (ngày cũ khi bấm Edit, review). Phần đệm lớn phía dưới
- * để dòng đang gõ luôn kéo lên được trên bàn phím iPhone; chạm vào đó là focus
- * về cuối bài. Trang hôm nay dùng các khối riêng (TodayView), không dùng cái này.
+ * Edits a whole raw page (a past day after Edit, a review). The large bottom
+ * padding lets the current line scroll above the iPhone keyboard; tapping it
+ * focuses the end of the text. Today's page uses blocks (TodayView), not this.
  */
 export default function Editor({ value, onChange, placeholder, loaded, focusOnLoad, label, below }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -33,8 +33,8 @@ export default function Editor({ value, onChange, placeholder, loaded, focusOnLo
     el.setSelectionRange(el.value.length, el.value.length);
   };
 
-  // Mở ra → con trỏ ở cuối bài, cuộn sẵn tới đó. (iOS không bật bàn phím khi
-  // focus không do chạm - khi đó chạm vào chỗ trống là xong.)
+  // On open → caret at the end, scrolled there. (iOS does not open the keyboard
+  // on focus without a tap - then a tap on the empty area does it.)
   useEffect(() => {
     if (!loaded || !focusOnLoad || focusedOnce.current) return;
     focusedOnce.current = true;

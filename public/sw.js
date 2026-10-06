@@ -1,20 +1,20 @@
 // ============================================================
 // hodi - Service worker
 //
-// Dựa trên fina/noda (public/sw.js) nhưng khác một điểm có chủ ý:
-// HTML là stale-while-revalidate, không phải network-first.
+// Based on fina/noda (public/sw.js) with one deliberate difference:
+// HTML is stale-while-revalidate, not network-first.
 //
-// hodi là web tĩnh, mọi dữ liệu nằm ở Firestore (có cache riêng). Nên HTML
-// cũ một bản build vẫn đúng - chỉ là giao diện của lần build trước. Đổi lại:
-// mở app là có trang ngay, kể cả mạng yếu hay mất mạng. Bản build mới được
-// tải ngầm và dùng ở lần mở sau.
+// hodi is a static site; all data lives in Firestore (with its own cache). So
+// HTML one build old is still correct - just last build's UI. In return the
+// app opens with a page at once, even on a weak or missing network. The new
+// build downloads in the background and is used on the next open.
 //
-// /_next/static/*  cache-first vĩnh viễn (tên file có hash nội dung).
-// HTML             stale-while-revalidate, khoá cache bỏ query (?d=…).
-// Firestore/Auth   KHÔNG đụng vào (khác origin, hoặc /__/).
+// /_next/static/*  cache-first forever (file names hash their content).
+// HTML             stale-while-revalidate, cache key without query (?d=…).
+// Firestore/Auth   NOT touched (other origin, or /__/).
 //
-// Lúc cài: tải sẵn mọi trang + toàn bộ JS/CSS mà các trang đó cần, để lần
-// đầu mất mạng mà bấm sang Days vẫn chạy được.
+// On install: precache every page + all JS/CSS those pages need, so the first
+// offline tap over to Days still works.
 // ============================================================
 
 const CACHE_VERSION = 'hodi-v1';
@@ -46,7 +46,7 @@ async function precache() {
         await cache.put(path, res);
         for (const m of html.matchAll(/["'(](\/_next\/static\/[^"'()\s]+)/g)) assets.add(m[1]);
       } catch {
-        // Mất mạng lúc cài: lần sau thử lại.
+        // Offline during install: try again next time.
       }
     }),
   );

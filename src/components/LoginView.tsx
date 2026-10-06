@@ -19,7 +19,7 @@ export default function LoginView() {
   return (
     <main className="paper flex min-h-dvh flex-col items-center justify-center gap-8 pb-[12dvh] text-center">
       <div className="flex flex-col items-center gap-4">
-        {/* eslint-disable-next-line @next/next/no-img-element -- SVG tĩnh, không cần tối ưu ảnh */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, no image optimization needed */}
         <img src="/branding/hodi-icon.svg" alt="" width={40} height={40} />
         <div>
           <h1 className="text-xl font-medium tracking-tight">hodi</h1>

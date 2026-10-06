@@ -1,8 +1,9 @@
 // ============================================================
-// hodi - Tuỳ chọn hiển thị (lưu theo máy, localStorage)
+// hodi - Display options (per device, localStorage)
 //
-// Theme và cỡ chữ phải có TRƯỚC khi vẽ trang, nên đọc bằng script inline
-// trong <head> (THEME_SCRIPT) chứ không chờ React. Firestore thì quá muộn.
+// Theme and text size must exist BEFORE the first paint, so an inline script
+// in <head> (THEME_SCRIPT) reads them instead of waiting for React. Firestore
+// would be too late.
 // ============================================================
 
 import { stringStore } from '@/lib/store';
@@ -20,11 +21,11 @@ export const sizeStore = stringStore<TextSize>('hodi.size', 'm', oneOf(['s', 'm'
 export const questionsStore = stringStore<'on' | 'off'>('hodi.questions', 'on', oneOf(['on', 'off']));
 export const typewriterStore = stringStore<'on' | 'off'>('hodi.typewriter', 'off', oneOf(['on', 'off']));
 
-/** Màu thanh trạng thái (theme-color) - khớp --bg trong globals.css. */
+/** Status bar color (theme-color) - matches --bg in globals.css. */
 export const BG_LIGHT = '#fafafa';
 export const BG_DARK = '#111111';
 
-/** Áp theme/cỡ chữ lên <html>. Gọi khi người dùng đổi trong Settings. */
+/** Applies theme/text size to <html>. Called when the user changes them in Settings. */
 export function applyDisplayPrefs(theme: Theme, size: TextSize): void {
   const root = document.documentElement;
   if (theme === 'system') root.removeAttribute('data-theme');
@@ -38,8 +39,8 @@ export function applyDisplayPrefs(theme: Theme, size: TextSize): void {
 }
 
 /**
- * Chạy đồng bộ trong <head>, trước lần vẽ đầu tiên - không nháy trắng ở dark
- * mode, không nhảy cỡ chữ. Viết tay bằng ES5 vì nó không qua bundler.
+ * Runs synchronously in <head>, before the first paint - no white flash in dark
+ * mode, no text size jump. Handwritten ES5 because it skips the bundler.
  */
 export const THEME_SCRIPT = `(function(){try{
 var t=localStorage.getItem('hodi.theme'),s=localStorage.getItem('hodi.size'),r=document.documentElement;

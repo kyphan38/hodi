@@ -8,21 +8,21 @@ import type { Entry, Review } from '@/types/hodi';
 
 const kinds = (today: string) => reviewInvites(today).map((r) => `${r.kind}:${r.period}`);
 
-test('lời mời review: Chủ nhật tuần này, thứ Hai tuần trước', () => {
+test('review invite: Sunday for this week, Monday for last week', () => {
   assert.deepEqual(kinds('2026-10-04'), ['week:2026-W40']); // CN
   assert.deepEqual(kinds('2026-10-05'), ['week:2026-W40']); // T2
   assert.deepEqual(kinds('2026-10-07'), []); // T4
 });
 
-test('lời mời review: cuối tháng và hai ngày đầu tháng', () => {
+test('review invite: month end and the first two days of the month', () => {
   assert.deepEqual(kinds('2026-10-31'), ['month:2026-10']); // T7
-  assert.deepEqual(kinds('2026-11-01'), ['week:2026-W44', 'month:2026-10']); // CN, ngày 1
-  assert.deepEqual(kinds('2026-11-02'), ['week:2026-W44', 'month:2026-10']); // T2, ngày 2
+  assert.deepEqual(kinds('2026-11-01'), ['week:2026-W44', 'month:2026-10']); // Sun, day 1
+  assert.deepEqual(kinds('2026-11-02'), ['week:2026-W44', 'month:2026-10']); // Mon, day 2
   assert.deepEqual(kinds('2026-11-03'), []);
   assert.deepEqual(kinds('2027-01-01'), ['month:2026-12']);
 });
 
-test('ngày trong kỳ review', () => {
+test('days in a review period', () => {
   assert.deepEqual(periodDays('2026-W40'), [
     '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04',
   ]);
@@ -38,7 +38,7 @@ const entry = (date: string, text: string, prompt: string | null = null): Entry 
   date, md: date.slice(5), text, words: countWords(text), prompt, createdAt: 0, updatedAt: 0,
 });
 
-test('export Markdown: cũ nhất trước, review sau ngày cuối kỳ, bỏ trang rỗng', () => {
+test('Markdown export: oldest first, review after its last day, empty pages skipped', () => {
   const review: Review = { kind: 'week', period: '2026-W40', text: 'Tuần ổn.', words: 2, createdAt: 0, updatedAt: 0 };
   const md = buildMarkdown(
     [entry('2026-10-05', 'Hôm nay.'), entry('2026-10-04', 'Chủ nhật.', 'What made you smile?'), entry('2026-10-03', '  ')],
@@ -55,7 +55,7 @@ test('export Markdown: cũ nhất trước, review sau ngày cuối kỳ, bỏ t
     ].join('\n'),
   );
   assert.equal(exportFilename('2026-10-05'), 'hodi-2026-10-05.md');
-  // Câu hỏi đã nằm trong trang thì không in lại ở dạng *nghiêng*.
+  // A question already in the page is not printed again in *italics*.
   const inline = buildMarkdown([entry('2026-10-04', '› Q?\nTrả lời.', 'Q?')], [], '2026-10-05');
   assert.ok(inline.includes('## Sun, 4 Oct 2026\n\n› Q?\nTrả lời.\n'));
   assert.ok(!inline.includes('*Q?*'));
