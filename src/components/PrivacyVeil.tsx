@@ -3,9 +3,9 @@
 import { useEffect } from 'react';
 
 /**
- * Làm mờ cả trang khi app bị ẩn, để ảnh chụp ở màn hình đổi app của iPhone
- * không lộ nhật ký. Chỉ theo visibilitychange (không theo blur): trên Mac,
- * chuyển cửa sổ mà trang mờ đi mỗi lần thì rất phiền.
+ * Blurs the whole page when the app is hidden, so the iPhone app switcher
+ * snapshot shows no journal. Follows visibilitychange only (not blur): on a
+ * Mac, fading the page on every window switch would be annoying.
  */
 export default function PrivacyVeil() {
   useEffect(() => {

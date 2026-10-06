@@ -13,7 +13,7 @@ import { dayOf, dayShort, dayTiny, monthLabel, weekMonday } from '@/lib/day';
 import { buildTimeline, hasWords, randomDay, search, type TimelineItem } from '@/lib/journal';
 import { stringStore } from '@/lib/store';
 
-/** Ô search và vị trí cuộn sống theo phiên: mở một ngày rồi back là về đúng chỗ. */
+/** Search box and scroll position live per session: open a day, go back, land in the same spot. */
 const queryStore = stringStore<string>('hodi.days.q', '', (raw) => raw, 'session');
 const SCROLL_KEY = 'hodi.days.scroll';
 const MONTHS_KEY = 'hodi.days.months';
@@ -31,7 +31,7 @@ function writeSession(key: string, value: number) {
   try {
     sessionStorage.setItem(key, String(value));
   } catch {
-    // bỏ qua
+    // ignore
   }
 }
 
@@ -58,7 +58,7 @@ export default function DaysView() {
   const sentinel = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
 
-  // Vẽ dần theo tháng khi cuộn - vài năm viết vẫn nhẹ.
+  // Render month by month while scrolling - years of writing stay light.
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
@@ -74,7 +74,7 @@ export default function DaysView() {
 
   useEffect(() => writeSession(MONTHS_KEY, monthsShown), [monthsShown]);
 
-  // Nhớ vị trí cuộn; trả lại khi dữ liệu đã về (trước đó trang còn ngắn).
+  // Remember the scroll position; restore it once data is in (the page is short before that).
   useEffect(() => {
     if (!loaded || restored.current) return;
     restored.current = true;
@@ -92,7 +92,7 @@ export default function DaysView() {
     };
   }, [loaded]);
 
-  // Vừa mở bằng "/" từ trang khác → focus ô search ngay.
+  // Opened with "/" from another page → focus search right away.
   useEffect(() => {
     try {
       if (sessionStorage.getItem(FOCUS_SEARCH_KEY)) {
@@ -100,11 +100,11 @@ export default function DaysView() {
         inputRef.current?.focus();
       }
     } catch {
-      // bỏ qua
+      // ignore
     }
   }, []);
 
-  // "/" để tìm, ở bất cứ đâu trên trang (trừ khi đang gõ trong một ô khác).
+  // "/" to search, anywhere on the page (unless typing in another field).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== '/' || e.metaKey || e.ctrlKey) return;

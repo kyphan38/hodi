@@ -1,12 +1,12 @@
 // ============================================================
-// hodi - Ngày, tuần, tháng, đếm chữ
+// hodi - Days, weeks, months, word count
 //
-// File thuần: không React, không Firestore, không DOM. Mọi chỗ tính "hôm nay"
-// đều đi qua dayOf() - không bao giờ new Date().toISOString().slice(0, 10)
-// (đó là ngày UTC, lệch 7 tiếng so với giờ VN).
+// Pure file: no React, no Firestore, no DOM. Every "today" goes through
+// dayOf() - never new Date().toISOString().slice(0, 10) (that is the UTC
+// date, 7 hours off Vietnam time).
 //
-// Một ngày bắt đầu lúc 04:00, không phải nửa đêm: viết lúc 01:00 vẫn là trang
-// của hôm trước. Người hay viết khuya không bị cắt đôi một buổi tối.
+// A day starts at 04:00, not midnight: writing at 01:00 is still the previous
+// day's page. Late writers do not get one evening split in two.
 // ============================================================
 
 export const DAY_START_HOUR = 4;
@@ -25,12 +25,12 @@ function toId(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** epoch ms → 'YYYY-MM-DD' theo giờ máy, ngày bắt đầu lúc 04:00. */
+/** epoch ms → 'YYYY-MM-DD' in local time, day starting at 04:00. */
 export function dayOf(ts: number): string {
   return toId(new Date(ts - DAY_START_HOUR * MS_HOUR));
 }
 
-/** 'YYYY-MM-DD' → Date lúc 12:00 trưa (giữa ngày, tránh mọi lệch giờ). */
+/** 'YYYY-MM-DD' → Date at 12:00 noon (mid-day, safe from any offset). */
 export function parseDay(id: string): Date {
   const [y, m, d] = id.split('-').map(Number);
   return new Date(y, m - 1, d, 12);
@@ -47,35 +47,35 @@ export function addDays(id: string, n: number): string {
   return toId(d);
 }
 
-/** Số ngày từ a tới b (b - a). */
+/** Days from a to b (b - a). */
 export function diffDays(a: string, b: string): number {
   return Math.round((parseDay(b).getTime() - parseDay(a).getTime()) / (24 * MS_HOUR));
 }
 
-/** 'MM-DD' - dùng cho "On this day". */
+/** 'MM-DD' - for "On this day". */
 export function monthDay(id: string): string {
   return id.slice(5, 10);
 }
 
-/** 'MON · 05 OCT 2026' - nhãn đầu trang, kiểu mono như hub. */
+/** 'MON · 05 OCT 2026' - page header label, mono style like hub. */
 export function dayLabel(id: string): string {
   const d = parseDay(id);
   return `${WEEKDAYS[d.getDay()]} · ${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
 }
 
-/** 'Mon, 5 Oct 2026' - tiêu đề trong file export. */
+/** 'Mon, 5 Oct 2026' - heading in the export file. */
 export function dayLong(id: string): string {
   const d = parseDay(id);
   return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/** 'Sun 4' - một dòng trong timeline. */
+/** 'Sun 4' - one timeline row. */
 export function dayShort(id: string): string {
   const d = parseDay(id);
   return `${WEEKDAYS[d.getDay()]} ${d.getDate()}`;
 }
 
-/** '12 Oct' - dùng cho "edited 12 Oct". */
+/** '12 Oct' - for "edited 12 Oct". */
 export function dayTiny(id: string): string {
   const d = parseDay(id);
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
@@ -87,26 +87,26 @@ export function monthLabel(month: string): string {
   return `${MONTHS_LONG[m - 1]} ${y}`;
 }
 
-/** 'YYYY-MM' của một ngày. */
+/** 'YYYY-MM' of a day. */
 export function monthOf(id: string): string {
   return id.slice(0, 7);
 }
 
-/** epoch ms → 'HH:MM' giờ máy. */
+/** epoch ms → 'HH:MM' local time. */
 export function timeLabel(ts: number): string {
   const d = new Date(ts);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// ---- Tuần ISO (thứ Hai là ngày đầu tuần) ----
+// ---- ISO week (Monday first) ----
 
-/** Thứ Hai của tuần chứa ngày này. */
+/** Monday of the week containing this day. */
 export function weekStart(id: string): string {
   const dow = (parseDay(id).getDay() + 6) % 7; // Mon=0 … Sun=6
   return addDays(id, -dow);
 }
 
-/** 'YYYY-Www' theo ISO 8601: năm của tuần là năm chứa thứ Năm của tuần đó. */
+/** 'YYYY-Www' per ISO 8601: the week's year is the year of its Thursday. */
 export function isoWeek(id: string): string {
   const thursday = addDays(weekStart(id), 3);
   const year = Number(thursday.slice(0, 4));
@@ -114,21 +114,21 @@ export function isoWeek(id: string): string {
   return `${year}-W${pad(week)}`;
 }
 
-/** 'YYYY-Www' → thứ Hai của tuần đó. */
+/** 'YYYY-Www' → Monday of that week. */
 export function weekMonday(period: string): string {
   const [y, w] = period.split('-W').map(Number);
-  // Ngày 4/1 luôn thuộc tuần 1.
+  // 4 January is always in week 1.
   return addDays(weekStart(`${y}-01-04`), (w - 1) * 7);
 }
 
-// ---- Dòng do app chèn ("mark") ----
-// Là chữ thật trong trang (export ra vẫn có), nhưng hiện mờ khi đọc và không
-// tính vào số chữ: đó là chữ của app, không phải của mình.
+// ---- Lines the app inserts ("marks") ----
+// Real text in the page (export keeps them), but faint when reading and not
+// counted as words: they are the app's words, not yours.
 
-/** Dòng giờ đầu mỗi khối: '· 21:40'. Xem lib/blocks.ts. */
+/** Time line at the top of each block: '· 21:40'. See lib/blocks.ts. */
 export const STAMP_RE = /^· \d{2}:\d{2}$/;
 
-/** Câu hỏi của khối: '› What did you avoid saying today?'. Xem lib/blocks.ts. */
+/** A block's question: '› What did you avoid saying today?'. See lib/blocks.ts. */
 export const QUESTION_RE = /^› \S/;
 
 export function isMarkLine(line: string): boolean {
@@ -136,9 +136,9 @@ export function isMarkLine(line: string): boolean {
   return STAMP_RE.test(t) || QUESTION_RE.test(t);
 }
 
-/** Đếm chữ: mỗi cụm không có khoảng trắng mà chứa chữ hoặc số là một chữ.
- *  Tiếng Việt đếm theo âm tiết ("nhật ký" = 2) - đủ để vẽ heatmap.
- *  Dòng giờ và câu hỏi do app ghi không tính. */
+/** Word count: each run without spaces that holds a letter or digit is one word.
+ *  Vietnamese counts by syllable ("nhật ký" = 2) - enough for the heatmap.
+ *  Time and question lines written by the app are not counted. */
 export function countWords(text: string): number {
   let n = 0;
   for (const line of text.split('\n')) {

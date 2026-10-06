@@ -3,12 +3,12 @@ rules_version = '2';
 // ============================================================
 // hodi - Firestore rules
 //
-// hodi không có server. Rules là lớp bảo vệ DUY NHẤT, nên khác các app khác
-// (chỉ kiểm uid), ở đây kiểm luôn email: người lạ đăng nhập Google vào project
-// này cũng không đọc/ghi được gì, kể cả dưới uid của chính họ.
+// hodi has no server. Rules are the ONLY guard, so unlike the other apps
+// (uid check only) this also checks the email: a stranger signing in with
+// Google on this project cannot read or write anything, even under their own uid.
 //
-// __ALLOWED_USER_EMAIL__ được scripts/rules.mjs thay bằng email thật và ghi ra
-// firestore.rules (gitignore). Sửa file .template này, đừng sửa file sinh ra.
+// __ALLOWED_USER_EMAIL__ is replaced by scripts/rules.mjs with the real email,
+// written to firestore.rules (gitignored). Edit this .template, not the output.
 // ============================================================
 
 service cloud.firestore {
@@ -50,14 +50,14 @@ service cloud.firestore {
         && validText(d);
     }
 
-    // Một ngày = một doc, id là 'YYYY-MM-DD'. Không bao giờ xoá (nguyên tắc #6).
+    // One day = one doc, id 'YYYY-MM-DD'. Never deleted (rule #6).
     match /users/{uid}/entries/{date} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && validEntry(request.resource.data, date);
       allow delete: if false;
     }
 
-    // Review tuần '2026-W40' / tháng '2026-10'.
+    // Weekly review '2026-W40' / monthly '2026-10'.
     match /users/{uid}/reviews/{period} {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && validReview(request.resource.data, period);

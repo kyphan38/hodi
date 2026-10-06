@@ -3,14 +3,14 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-/** DaysView đọc cờ này để focus ô search khi vừa mở bằng "/". */
+/** DaysView reads this flag to focus search when opened with "/". */
 export const FOCUS_SEARCH_KEY = 'hodi.days.focus';
 
 /**
- * Phím tắt chung trên Mac (iPhone không có bàn phím thật nên không ảnh hưởng):
- * - Esc: đang gõ thì rời ô viết; không gõ thì về trang hôm nay.
- * - "/": sang Days và focus ô search (ở Days thì DaysView tự lo).
- * ⌘S nằm ở useSaveShortcut, ⌘E và ←/→ nằm ở DayView.
+ * Global shortcuts on Mac (iPhone has no real keyboard, so no effect there):
+ * - Esc: while typing, leave the field; otherwise go to today's page.
+ * - "/": go to Days and focus search (on Days, DaysView handles it).
+ * ⌘S lives in useSaveShortcut, ⌘E and ←/→ in DayView.
  */
 export default function Shortcuts() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function Shortcuts() {
         try {
           sessionStorage.setItem(FOCUS_SEARCH_KEY, '1');
         } catch {
-          // bỏ qua
+          // ignore
         }
         router.push('/days/');
       }

@@ -1,13 +1,13 @@
 // ============================================================
-// hodi - Câu hỏi gợi ý của ngày
+// hodi - Daily prompt questions
 //
-// Trang hôm nay hiện một câu hỏi mờ, kèm "another" và "free write". Gõ là trả
-// lời; "done" khép câu lại và câu tiếp theo hiện ra. Không bắt buộc trả lời,
-// không đếm. Mục tiêu: dễ thành thật với cảm xúc và dám nhìn thẳng sự thật -
-// nhưng không tạo áp lực (nhiều câu quá là dễ bỏ cuộc).
+// Today's page shows one faint question, plus "another" and "free write".
+// Typing answers it; "done" closes it and the next one appears. Answering is
+// optional, nothing is counted. Goal: make it easy to be honest about feelings
+// and face the facts - without pressure (too many questions make people quit).
 //
-// Câu ngắn, tiếng Anh dễ đọc. Thêm/bớt thoải mái; thứ tự không quan trọng
-// vì câu của ngày được chọn bằng hash của ngày.
+// Short questions, easy English. Add or remove freely; order does not matter
+// because the day's question is picked by a hash of the date.
 // ============================================================
 
 import { QUESTION_RE } from '@/lib/day';
@@ -62,7 +62,7 @@ export const QUESTIONS: readonly string[] = [
   'Write about today as if you were telling an old friend.',
 ];
 
-/** Hash chuỗi đơn giản (FNV-1a 32-bit) - đủ để rải đều, cùng ngày cùng câu. */
+/** Simple string hash (FNV-1a 32-bit) - spreads evenly, same day same question. */
 function hash(s: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -72,13 +72,13 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
-/** Câu hỏi của một ngày. `skip` tăng mỗi lần bấm "another". */
+/** The question for a day. `skip` goes up each time "another" is pressed. */
 export function questionFor(day: string, skip = 0): string {
   const n = QUESTIONS.length;
   return QUESTIONS[(hash(day) + skip) % n];
 }
 
-/** Các câu hỏi đã có trong trang (dòng "› …"). */
+/** Questions already in the page ("› …" lines). */
 export function askedIn(text: string): Set<string> {
   const out = new Set<string>();
   for (const line of text.split('\n')) {
@@ -88,7 +88,7 @@ export function askedIn(text: string): Set<string> {
   return out;
 }
 
-/** Câu tiếp theo (từ `skip` trở đi) chưa được trả lời hôm nay. */
+/** The next question (from `skip` on) not yet answered today. */
 export function nextQuestion(day: string, asked: Set<string>, skip: number): { question: string; skip: number } {
   for (let i = 0; i < QUESTIONS.length; i++) {
     const q = questionFor(day, skip + i);

@@ -1,14 +1,14 @@
 'use client';
 
 // ============================================================
-// hodi - Đăng nhập (chỉ phía client)
+// hodi - Sign-in (client only)
 //
-// Dựa trên fina/src/contexts/AuthContext.tsx nhưng KHÔNG có session cookie hay
-// /api/auth/session: hodi không có server. Firebase Auth tự giữ phiên trong
-// IndexedDB, mở app offline vẫn biết ai đang đăng nhập.
+// Based on fina/src/contexts/AuthContext.tsx but WITHOUT a session cookie or
+// /api/auth/session: hodi has no server. Firebase Auth keeps the session in
+// IndexedDB, so an offline app start still knows who is signed in.
 //
-// uidHintStore nhớ uid lần trước để trang viết hiện ra NGAY khi mở app,
-// không chờ Firebase Auth đọc xong IndexedDB (không spinner trước khi viết).
+// uidHintStore remembers the last uid so the writing page shows AT ONCE,
+// without waiting for Firebase Auth to read IndexedDB (no spinner before writing).
 // ============================================================
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -33,12 +33,12 @@ const UNAUTHORIZED_DOMAIN =
   'This domain is not allowed to sign in. Add it in Firebase Console → Authentication → Settings → Authorized domains.';
 const GENERIC = 'Sign-in failed. Please try again.';
 
-/** uid của lần đăng nhập trước, '' nếu chưa có. */
+/** uid from the last sign-in, '' if none. */
 export const uidHintStore = stringStore<string>('hodi.uid', '', (raw) => raw);
 
 type AuthState = {
   user: User | null;
-  /** true khi chưa biết đã đăng nhập hay chưa. */
+  /** true while sign-in state is unknown. */
   loading: boolean;
   signingIn: boolean;
   error: string | null;
@@ -48,7 +48,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-/** iPhone, iPad (iPadOS báo "Macintosh") hoặc app ngoài màn hình chính. */
+/** iPhone, iPad (iPadOS reports "Macintosh") or a Home Screen app. */
 function prefersRedirect(): boolean {
   const ua = navigator.userAgent;
   const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
@@ -75,9 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!configured) return;
     const auth = getAuthClient();
 
-    // Kết quả của signInWithRedirect (đường lui khi popup bị chặn trên iOS).
+    // Result of signInWithRedirect (fallback when iOS blocks the popup).
     getRedirectResult(auth).catch((err) => {
-      // onAuthStateChanged vẫn chạy; lỗi ở đây không chặn app.
+      // onAuthStateChanged still runs; an error here does not block the app.
       console.warn('[auth] redirect result failed', err);
     });
 
@@ -100,30 +100,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     setSigningIn(true);
     try {
-      // Emulator: đăng nhập thẳng bằng Google credential giả (emulator chấp
-      // nhận token JSON không ký). Popup/redirect cần iframe khác origin mà
-      // trình duyệt test thường chặn.
+      // Emulator: sign in directly with a fake Google credential (the emulator
+      // accepts an unsigned JSON token). Popup/redirect need a cross-origin
+      // iframe that test browsers often block.
       if (USE_EMULATORS) {
         const token = JSON.stringify({ sub: 'dev-hodi', email: allowedEmail, email_verified: true });
         await signInWithCredential(getAuthClient(), GoogleAuthProvider.credential(token));
         return;
       }
-      // Redirect chỉ chạy được khi trang đăng nhập cùng domain (vercel.json);
-      // nếu không, Safari làm mất kết quả.
+      // Redirect only works when the sign-in page is on the same domain
+      // (vercel.json); otherwise Safari loses the result.
       const auth = getAuthClient();
       if (auth.config.authDomain === window.location.host && prefersRedirect()) {
         await signInWithRedirect(auth, newProvider());
-        return; // trang sẽ điều hướng đi
+        return; // the page will navigate away
       }
       await signInWithPopup(auth, newProvider());
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        // Người dùng tự đóng - im lặng.
+        // The user closed it - stay quiet.
       } else if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
         try {
           await signInWithRedirect(getAuthClient(), newProvider());
-          return; // trang sẽ điều hướng đi
+          return; // the page will navigate away
         } catch {
           setError(GENERIC);
         }
@@ -143,14 +143,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await firebaseSignOut(getAuthClient());
     } finally {
-      // Riêng tư: xoá luôn nháp và cache Firestore trên máy này.
+      // Privacy: also clear drafts and the Firestore cache on this device.
       clearHodiStorage();
       try {
         const db = getDb();
         await terminate(db);
         await clearIndexedDbPersistence(db);
       } catch {
-        // Tab khác còn mở thì không xoá được cache - vẫn đăng xuất bình thường.
+        // Another open tab blocks clearing the cache - still sign out normally.
       }
       window.location.replace('/login/');
     }

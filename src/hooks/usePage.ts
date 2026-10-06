@@ -1,17 +1,17 @@
 'use client';
 
 // ============================================================
-// hodi - Một trang chữ: đọc, autosave, nháp, trạng thái
+// hodi - One text page: read, autosave, draft, status
 //
-// Dùng cho trang hôm nay, ngày cũ (khi bấm Edit) và review.
-// Người gọi phải remount theo trang (key={keyId}) - hook không tự đổi trang.
+// Used by today's page, past days (after Edit) and reviews.
+// The caller must remount per page (key={keyId}) - the hook never switches pages.
 //
-// Quy tắc:
-// - Chữ trên máy là nguồn chính khi đang gõ. Snapshot từ xa không bao giờ
-//   ghi đè chữ chưa lưu (tránh nhảy con trỏ với bộ gõ Telex).
-// - Mỗi lần gõ: ghi nháp localStorage ngay, lưu Firestore sau ~1s, và flush
-//   khi ẩn tab / rời trang / unmount (useSaveOnLeave).
-// - Có chữ chưa lưu mà server lại đổi (máy khác viết) → gộp, không bỏ bên nào.
+// Rules:
+// - Local text is the source of truth while typing. A remote snapshot never
+//   overwrites unsaved text (avoids caret jumps with Telex input).
+// - Every keystroke: write the localStorage draft at once, save to Firestore
+//   after ~1s, and flush on tab hide / leave / unmount (useSaveOnLeave).
+// - Unsaved text plus a server change (another device wrote) → merge, drop neither.
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,11 +28,11 @@ export type PageState = {
   text: string;
   setText: (next: string) => void;
   status: SaveStatus;
-  /** Snapshot đầu tiên đã về (từ cache hoặc server). */
+  /** First snapshot is in (from cache or server). */
   loaded: boolean;
-  /** Doc mới nhất (null nếu chưa có). */
+  /** Latest doc (null if none). */
   data: PageData | null;
-  /** Lưu ngay, không chờ debounce (⌘S). */
+  /** Save now, skipping the debounce (⌘S). */
   flush: () => void;
 };
 
@@ -44,11 +44,11 @@ function initialStatus(draft: Draft | null): SaveStatus {
 export function usePage(
   uid: string,
   key: PageKey,
-  /** Câu hỏi đang hiện - chỉ ghi vào doc lúc trang ra đời. */
+  /** The question on screen - written to the doc only when the page is created. */
   getPrompt?: () => string | null,
 ): PageState {
   const { col, id } = key;
-  // Gắn uid: nháp của tài khoản này không bao giờ lọt sang tài khoản khác.
+  // Tied to uid: this account's draft never leaks into another account.
   const draftId = `${uid}/${col}/${id}`;
 
   const [draft] = useState(() => readDraft(draftId));
@@ -58,8 +58,8 @@ export function usePage(
   const [data, setData] = useState<PageData | null>(null);
 
   const textRef = useRef(draft?.text ?? '');
-  // Bản text khớp với server gần nhất (đã ghi đi hoặc đã đọc về).
-  // textRef !== savedRef nghĩa là còn chữ chưa lưu. null = nháp cũ chưa từng lên cloud.
+  // The text last in sync with the server (written or read).
+  // textRef !== savedRef means unsaved text. null = old draft that never reached the cloud.
   const savedRef = useRef<string | null>(draft ? (draft.synced ? draft.text : null) : '');
   const dataRef = useRef<PageData | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,7 +77,7 @@ export function usePage(
     if (current === savedRef.current) return;
     const prev = dataRef.current;
     savedRef.current = current;
-    // Không tạo doc cho một trang chưa từng có chữ.
+    // Never create a doc for a page that never had text.
     if (!prev && !current.trim()) return;
     const page = buildPage({ col, id } as PageKey, current, prev, promptRef.current?.() ?? null, Date.now());
     writePage(uid, { col, id } as PageKey, page);
@@ -106,7 +106,7 @@ export function usePage(
       setData(doc);
       setLoaded(true);
 
-      // Tiếng vọng của chính lần ghi trên máy này - text đã đúng sẵn.
+      // Echo of this device's own write - the text is already right.
       if (hasPending) {
         setStatus('local');
         return;

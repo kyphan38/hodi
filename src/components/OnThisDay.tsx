@@ -7,8 +7,8 @@ import { useJournal } from '@/contexts/JournalContext';
 import { onThisDay } from '@/lib/journal';
 
 /**
- * "Ngày này năm trước": vài dòng mờ dưới trang hôm nay, chạm để đọc.
- * Không có bài năm trước thì không hiện gì.
+ * "On this day": a few faint lines under today's page, tap to read.
+ * Nothing from earlier years → nothing shown.
  */
 export default function OnThisDay({ today }: { today: string }) {
   const { entries } = useJournal();

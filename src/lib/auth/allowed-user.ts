@@ -1,18 +1,18 @@
 // ============================================================
-// hodi - Allowlist phía client
+// hodi - Client-side allowlist
 //
-// Chỉ là lớp chặn sớm cho dễ hiểu ("account not authorized"). Lớp bảo vệ thật
-// là firestore.rules - client thì ai cũng sửa được.
+// Only an early, readable block ("account not authorized"). The real guard is
+// firestore.rules - anyone can edit the client.
 // ============================================================
 
 import type { User } from 'firebase/auth';
 
 import { USE_EMULATORS } from '@/lib/firebase-client';
 
-/** Email dùng với emulator khi chưa có .env.local - khớp scripts/rules.mjs --emu. */
+/** Email used with the emulator when there is no .env.local - matches scripts/rules.mjs --emu. */
 export const DEV_EMAIL = 'dev@hodi.test';
 
-/** Email được phép, đã chuẩn hoá ('' = chưa cấu hình). */
+/** Allowed email, normalized ('' = not configured). */
 export const allowedEmail = (
   process.env.NEXT_PUBLIC_ALLOWED_USER_EMAIL || (USE_EMULATORS ? DEV_EMAIL : '')
 )

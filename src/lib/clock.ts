@@ -1,9 +1,10 @@
 // ============================================================
-// hodi - Đồng hồ dùng chung (chép từ fina/src/lib/clock.ts)
+// hodi - Shared clock (copied from fina/src/lib/clock.ts)
 //
-// React 19 cấm gọi Date.now() trong lúc render. Đọc giờ ở một chỗ, cập nhật
-// mỗi phút và mỗi lần app quay lại foreground, trả về qua useSyncExternalStore.
-// Nhờ vậy trang tự nhận ra đã sang ngày mới (04:00) dù app mở sẵn qua đêm.
+// React 19 forbids Date.now() during render. Read the time in one place,
+// update every minute and whenever the app returns to the foreground, expose
+// it via useSyncExternalStore. So the page notices the new day (04:00) even
+// when the app stays open overnight.
 // ============================================================
 
 const TICK_MS = 60_000;
@@ -38,7 +39,7 @@ export const clockStore = {
     };
   },
   get: () => now,
-  // Server không có "bây giờ" nào đúng cho client - trả 0, render sau khi
-  // hydrate sẽ điền giá trị thật.
+  // The server has no correct "now" for the client - return 0; the render
+  // after hydration fills in the real value.
   getServer: () => 0,
 };

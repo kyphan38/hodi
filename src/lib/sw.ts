@@ -1,9 +1,9 @@
 // ============================================================
-// hodi - Đăng ký service worker (chép từ fina/src/lib/sw.ts)
+// hodi - Service worker registration (copied from fina/src/lib/sw.ts)
 //
-// Không import gì, cố ý: cache app-shell quyết định app mở nhanh hay chậm,
-// không được phụ thuộc vào SDK nào khác.
-// Chỉ đăng ký ở bản build: ở dev, cache-first sẽ giữ code cũ và gây khó hiểu.
+// Imports nothing, on purpose: the app-shell cache decides how fast the app
+// opens and must not depend on any other SDK.
+// Only registers in a build: in dev, cache-first would keep old code and confuse.
 // ============================================================
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
@@ -12,7 +12,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   try {
     return await navigator.serviceWorker.register('/sw.js', { scope: '/' });
   } catch {
-    // Safari private mode và một vài ngữ cảnh khác từ chối. App vẫn chạy.
+    // Safari private mode and some other contexts refuse. The app still works.
     return null;
   }
 }

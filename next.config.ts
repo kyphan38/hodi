@@ -1,16 +1,16 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Web tĩnh, không server: mọi dữ liệu đi thẳng từ trình duyệt tới Firestore.
-  // Bảo vệ dữ liệu nằm ở firestore.rules, không ở API route nào cả.
+  // Static site, no server: all data goes straight from the browser to Firestore.
+  // Data protection lives in firestore.rules, not in any API route.
   output: 'export',
-  // /days -> /days/index.html: host tĩnh nào cũng phục vụ đúng, kể cả SW cache.
+  // /days -> /days/index.html: any static host serves it right, SW cache included.
   trailingSlash: true,
-  // Redirect /days -> /days/ nằm trong vercel.json thay vì Next: trên Vercel,
-  // redirect của Next chạy trước route /__/auth, biến /__/auth/handler thành
-  // /__/auth/handler/ mà firebaseapp.com không phục vụ.
+  // The /days -> /days/ redirect lives in vercel.json, not Next: on Vercel,
+  // Next's redirect runs before the /__/auth route, turning /__/auth/handler into
+  // /__/auth/handler/, which firebaseapp.com does not serve.
   skipTrailingSlashRedirect: true,
-  // Huy hiệu dev của Next đè lên góc dưới trang viết.
+  // Next's dev badge covers the bottom corner of the writing page.
   devIndicators: false,
 };
 

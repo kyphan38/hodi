@@ -1,10 +1,10 @@
 // ============================================================
-// hodi - Vị trí con trỏ trong textarea (theo pixel)
+// hodi - Caret position in a textarea (in pixels)
 //
-// Textarea không cho biết con trỏ đang ở dòng nào trên màn hình. Cách quen
-// thuộc: dựng một div "gương" cùng chiều rộng, cùng font, chép chữ trước con
-// trỏ vào, rồi đo vị trí một span đánh dấu ở cuối.
-// Dùng cho chế độ máy đánh chữ (giữ dòng đang gõ ở giữa màn hình).
+// A textarea does not tell which screen line the caret is on. The usual trick:
+// build a "mirror" div with the same width and font, copy the text before the
+// caret into it, then measure a marker span at the end.
+// Used for typewriter mode (keeps the current line mid-screen).
 // ============================================================
 
 let mirror: HTMLDivElement | null = null;
@@ -15,7 +15,7 @@ const COPY = [
   'whiteSpace', 'overflowWrap', 'wordBreak', 'tabSize',
 ] as const;
 
-/** Khoảng cách (px) từ đỉnh textarea tới đỉnh dòng chứa con trỏ. */
+/** Distance (px) from the textarea top to the top of the caret's line. */
 export function caretTop(el: HTMLTextAreaElement): number {
   if (!mirror) {
     mirror = document.createElement('div');

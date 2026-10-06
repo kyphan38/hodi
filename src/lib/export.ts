@@ -1,9 +1,9 @@
 // ============================================================
-// hodi - Export ra một file Markdown
+// hodi - Export to one Markdown file
 //
-// Dữ liệu là của mình: một file .md đọc được bằng bất cứ app nào, mười năm
-// sau vẫn mở được. Cũ nhất trước, như đọc một cuốn sổ.
-// File thuần (phần tải file nằm ở SettingsView).
+// The data is yours: one .md file any app can read, still readable ten years
+// on. Oldest first, like reading a notebook.
+// Pure file (the download lives in SettingsView).
 // ============================================================
 
 import { dayLong } from '@/lib/day';
@@ -22,7 +22,7 @@ export function buildMarkdown(entries: Entry[], reviews: Review[], today: string
 
   for (const e of entries) {
     if (!hasWords(e)) continue;
-    // Câu hỏi đã nằm trong trang ('› …') thì không in lại.
+    // The question is already in the page ('› …'), so do not print it again.
     const prompt = e.prompt && askedIn(e.text).size === 0 ? `*${e.prompt}*\n\n` : '';
     blocks.push({ date: e.date, order: 0, md: `## ${dayLong(e.date)}\n\n${prompt}${e.text.trim()}\n` });
   }
@@ -30,7 +30,7 @@ export function buildMarkdown(entries: Entry[], reviews: Review[], today: string
     if (!hasWords(r)) continue;
     blocks.push({ date: reviewEnd(r), order: 1, md: `## Review, ${reviewTitle(r.period, true)}\n\n${r.text.trim()}\n` });
   }
-  // Cũ nhất trước; cùng ngày thì review sau bài của ngày đó.
+  // Oldest first; on the same day the review comes after that day's entry.
   blocks.sort((a, b) => (a.date === b.date ? a.order - b.order : a.date < b.date ? -1 : 1));
 
   const pages = blocks.length;

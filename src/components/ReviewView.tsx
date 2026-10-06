@@ -24,7 +24,7 @@ const PLACEHOLDER: Record<ReviewKind, string> = {
   month: 'What is worth remembering from this month?',
 };
 
-/** /review/?p=2026-W40 hoặc ?p=2026-10. */
+/** /review/?p=2026-W40 or ?p=2026-10. */
 export default function ReviewView() {
   const params = useSearchParams();
   const period = params.get('p') ?? '';
@@ -87,8 +87,8 @@ function ReviewPage({ period, kind }: { period: string; kind: ReviewKind }) {
 }
 
 /**
- * Các trang của kỳ này, thu gọn còn dòng đầu - đọc lại trước khi viết review.
- * Chạm một dòng để mở cả trang ngay tại chỗ.
+ * This period's pages, folded to their first line - to read back before the review.
+ * Tap a line to open the full page in place.
  */
 function PeriodPages({ period }: { period: string }) {
   const { entries, loaded } = useJournal();
@@ -129,8 +129,8 @@ function PeriodPages({ period }: { period: string }) {
 }
 
 /**
- * Lời mời review trên trang hôm nay: một dòng mờ, chỉ vào Chủ nhật/thứ Hai và
- * cuối/đầu tháng, biến mất khi đã viết review đó.
+ * Review invite on today's page: one faint line, only on Sunday/Monday and at
+ * month end/start, gone once that review is written.
  */
 export function ReviewInvites({ today }: { today: string }) {
   const { reviews, loaded } = useJournal();

@@ -7,9 +7,9 @@ import type { SaveStatus } from '@/types/hodi';
 const WORDS_MS = 3000;
 
 /**
- * Trạng thái lưu, không chữ: chấm rỗng = đã lưu trên máy, chưa lên cloud;
- * chấm đặc = đã lên cloud (sáng lên rồi mờ dần). Không toast, không "offline".
- * Chạm vào → hiện số chữ trong ít giây.
+ * Save status, no words: hollow dot = saved on this device, not in the cloud
+ * yet; solid dot = in the cloud (lights up, then fades). No toast, no "offline".
+ * Tap → shows the word count for a few seconds.
  */
 export default function StatusDot({ status, words, flash }: { status: SaveStatus; words: number; flash: number }) {
   const [showWords, setShowWords] = useState(false);
@@ -37,7 +37,7 @@ export default function StatusDot({ status, words, flash }: { status: SaveStatus
       </span>
       {status !== 'idle' && (
         <span
-          // key đổi → animation chạy lại (lưu xong, hoặc ⌘S).
+          // New key → the animation runs again (saved, or ⌘S).
           key={`${status}-${flash}`}
           className={`block size-[7px] rounded-full border-[1.5px] border-current ${status === 'synced' ? 'settle bg-current' : ''}`}
         />

@@ -7,7 +7,7 @@ import { dayLong } from '@/lib/day';
 import { buildHeatmap, type HeatCell } from '@/lib/journal';
 import type { Entry } from '@/types/hodi';
 
-// Độ đậm của mực theo mức. Đơn sắc: chỉ đổi độ mờ, không đổi màu.
+// Ink weight per level. Monochrome: only opacity changes, never color.
 const ALPHA = [0.07, 0.24, 0.44, 0.68, 0.92];
 const CELL = 9;
 const GAP = 2;
@@ -21,9 +21,9 @@ function cellStyle(c: HeatCell) {
 }
 
 /**
- * Lưới kiểu GitHub cho một năm: ô đậm = ngày viết nhiều. Nhìn là biết giai
- * đoạn nào viết đều, giai đoạn nào bỏ bê. Chạm/bấm một ô → mở ngày đó.
- * Hẹp hơn màn hình thì cuộn ngang, mặc định đứng ở tuần mới nhất.
+ * GitHub-style grid for one year: darker cell = more words that day. Shows at
+ * a glance when writing was steady and when it stopped. Tap a cell → that day.
+ * Narrower than the screen → scrolls sideways, starting at the latest week.
  */
 export default function Heatmap({ entries, today }: { entries: Entry[]; today: string }) {
   const router = useRouter();

@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// hodi - Tạo dữ liệu mẫu trong EMULATOR (không bao giờ chạm project thật)
+// hodi - Seed sample data in the EMULATOR (never touches the real project)
 //
 //   node scripts/seed-emu.mjs <uid>
 //
-// uid: localStorage 'hodi.uid' trong trình duyệt sau khi đăng nhập emulator.
-// Tạo ~1 năm bài viết (có khoảng lặng), một bài đúng ngày này năm trước, và
-// một review tuần. Ghi qua REST với "Bearer owner" (chỉ emulator chấp nhận).
+// uid: localStorage 'hodi.uid' in the browser after an emulator sign-in.
+// Creates ~1 year of entries (with quiet gaps), one entry on this day last
+// year, and one weekly review. Writes over REST with "Bearer owner" (emulator only).
 // ---------------------------------------------------------------------------
 
 const uid = process.argv[2];
@@ -52,7 +52,7 @@ async function put(path, data) {
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
 }
 
-// Ngày bắt đầu 04:00 như app: lùi 4 tiếng rồi lấy ngày.
+// Days start at 04:00 like the app: step back 4 hours, then take the date.
 const today = new Date(Date.now() - 4 * 3600_000);
 let seed = 7;
 const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -61,7 +61,7 @@ let count = 0;
 for (let back = 1; back <= 365; back++) {
   const d = new Date(today);
   d.setDate(d.getDate() - back);
-  // Có giai đoạn viết đều, có giai đoạn bỏ bê.
+  // Some stretches are steady, some are skipped.
   const busy = Math.floor(back / 40) % 3 === 1;
   if (rand() < (busy ? 0.8 : 0.35)) continue;
   const n = 1 + Math.floor(rand() * (rand() < 0.2 ? 30 : 6));
@@ -74,7 +74,7 @@ for (let back = 1; back <= 365; back++) {
   count++;
 }
 
-// Đúng ngày này năm trước, và hai năm trước.
+// On this day last year, and two years ago.
 for (const years of [1, 2]) {
   const d = new Date(today);
   d.setFullYear(d.getFullYear() - years);
