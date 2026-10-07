@@ -6,8 +6,9 @@
 // optional, nothing is counted. Goal: make it easy to be honest about feelings
 // and face the facts - without pressure (too many questions make people quit).
 //
-// Short questions, easy English. Add or remove freely; order does not matter
-// because the day's question is picked by a hash of the date.
+// Short prompts, easy English: questions, lists ("List three ...") and
+// sentences to finish. Add or remove freely; order does not matter because
+// the day's question is picked by a hash of the date.
 // ============================================================
 
 import { QUESTION_RE } from '@/lib/day';
@@ -21,6 +22,10 @@ export const QUESTIONS: readonly string[] = [
   'What feeling did you push away today?',
   'What is sitting heavy in your chest right now?',
   'What made you smile, even a little?',
+  'What emotion showed up most today, and when?',
+  'What are you worried about that you have not said out loud?',
+  'What do you need right now that you are not giving yourself?',
+  'List three feelings you had today, from small to big.',
   // honesty
   'What did you avoid saying today?',
   'What are you pretending not to know?',
@@ -29,6 +34,11 @@ export const QUESTIONS: readonly string[] = [
   'Where did you say yes when you meant no?',
   'What story are you telling yourself that may not be true?',
   'What did you do today only to look good?',
+  'What are you avoiding by staying busy?',
+  'What do you keep saying you will do but never start?',
+  'Where were you not honest with yourself today?',
+  'List the things you complained about today. Which ones can you change?',
+  'Finish this sentence: The truth is ...',
   // shadow
   'Who annoyed you today, and what does that say about you?',
   'What are you afraid people will find out about you?',
@@ -36,15 +46,25 @@ export const QUESTIONS: readonly string[] = [
   'What part of yourself did you hide today?',
   'What are you still angry about?',
   'Which habit is quietly costing you the most?',
+  'What do you criticize in others that you also do?',
+  'What would you do if you were not afraid of looking stupid?',
+  'List three things you blame others for. What was your part?',
   // body
   'How did your body feel today?',
   'Did you rest today, or only stop?',
+  'Where in your body do you feel stress right now?',
+  'How did you sleep, eat and move today?',
+  'What does your body want more of this week?',
   // people
   'Who did you think about most today?',
   'What do you wish someone had asked you today?',
   'Who do you owe a message, an apology, or a thank you?',
   'When did you feel alone today?',
   'What did someone do today that you want to remember?',
+  'Who made you feel safe today?',
+  'Which conversation today is still on your mind?',
+  'Who do you miss right now?',
+  'List the people you talked to today, and one word for each.',
   // change
   'What is one small thing you can do differently tomorrow?',
   'What are you ready to stop doing?',
@@ -53,12 +73,23 @@ export const QUESTIONS: readonly string[] = [
   'If today happened again, what would you change?',
   'What are you waiting for permission to do?',
   'What would make tomorrow ten percent better?',
+  'What do you want to be true one year from now?',
+  'What decision have you been putting off?',
+  'List three things you can let go of this week.',
+  'List the top three things that matter tomorrow.',
+  'Finish this sentence: Next time, I will ...',
   // small joys
   'What was the best ten minutes of your day?',
   'What small thing are you grateful for today?',
   'What did you notice today that you usually miss?',
   'What are you looking forward to?',
   'What went better than you expected?',
+  'What did you learn or read today that stayed with you?',
+  'What made you laugh today?',
+  'List three good things that happened today, however small.',
+  'List five things around you that you like.',
+  'List what you did today, from morning to night.',
+  'Finish this sentence: Today I am glad that ...',
   'Write about today as if you were telling an old friend.',
 ];
 
