@@ -62,3 +62,9 @@ ui-debug.log*
 
 # du lieu emulator (npm run emu)
 /.emulator-data/
+
+# Cloud Functions (AI)
+functions/node_modules
+functions/lib
+functions/.env
+functions/.secret.local

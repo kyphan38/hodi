@@ -1,13 +1,16 @@
 'use client';
 
-import { useSyncExternalStore, type ReactNode } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import TopBar from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJournal } from '@/contexts/JournalContext';
+import { pingAi } from '@/lib/ai';
 import { dayOf } from '@/lib/day';
 import { buildMarkdown, exportFilename } from '@/lib/export';
 import {
+  aiLangStore,
+  aiStore,
   applyDisplayPrefs,
   questionsStore,
   sizeStore,
@@ -86,6 +89,8 @@ export default function SettingsView() {
   const size = useStore(sizeStore);
   const questions = useStore(questionsStore);
   const typewriter = useStore(typewriterStore);
+  const ai = useStore(aiStore);
+  const aiLang = useStore(aiLangStore);
 
   const pickTheme = (t: Theme) => {
     themeStore.set(t);
@@ -142,6 +147,32 @@ export default function SettingsView() {
       </section>
 
       <section className="mt-10 text-[15px]">
+        <Choice
+          label="AI"
+          value={ai}
+          onPick={(v) => aiStore.set(v)}
+          options={[
+            { value: 'on', label: 'on' },
+            { value: 'off', label: 'off' },
+          ]}
+        />
+        {ai === 'on' && (
+          <>
+            <Choice
+              label="AI language"
+              value={aiLang}
+              onPick={(v) => aiLangStore.set(v)}
+              options={[
+                { value: 'vi', label: 'Tiếng Việt' },
+                { value: 'en', label: 'English' },
+              ]}
+            />
+            <AiCheck />
+          </>
+        )}
+      </section>
+
+      <section className="mt-10 text-[15px]">
         <Row label="Your journal">
           <button
             type="button"
@@ -169,5 +200,36 @@ export default function SettingsView() {
         </p>
       </section>
     </main>
+  );
+}
+
+/** Calls the ping function once: proves sign-in, the key and the model work. */
+function AiCheck() {
+  const [state, setState] = useState<'idle' | 'busy' | 'failed' | string>('idle');
+  const run = async () => {
+    setState('busy');
+    try {
+      const res = await pingAi();
+      setState(res.text);
+    } catch (err) {
+      console.warn('[ai] ping failed', err);
+      setState('failed');
+    }
+  };
+  const answer = state !== 'idle' && state !== 'busy' && state !== 'failed';
+  return (
+    <>
+      <Row label="AI check">
+        <button
+          type="button"
+          disabled={state === 'busy'}
+          onClick={run}
+          className="text-faint hover:text-ink disabled:opacity-40"
+        >
+          {state === 'busy' ? '…' : state === 'failed' ? 'failed, retry' : 'check'}
+        </button>
+      </Row>
+      {answer && <p className="text-[13px] leading-relaxed text-faint">{state}</p>}
+    </>
   );
 }

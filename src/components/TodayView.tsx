@@ -24,8 +24,9 @@ import { lastInputAt } from '@/lib/activity';
 import { answered, parseBlocks, serializeBlocks, type Block } from '@/lib/blocks';
 import { countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
-import { questionsStore } from '@/lib/prefs';
+import { aiLangStore, questionsStore } from '@/lib/prefs';
 import { nextQuestion } from '@/lib/questions';
+import { needsSupport, SUPPORT_LINE } from '@/lib/safety';
 
 /** Left open past 04:00: only move to the new page after a long typing pause. */
 const IDLE_MS = 10 * 60_000;
@@ -245,6 +246,8 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
         </div>
       )}
 
+      {needsSupport(page.text) && <SupportLine />}
+
       <div className="mt-14 space-y-6 pb-[40dvh] empty:hidden">
         <ReviewInvites today={day} />
         <OnThisDay today={day} />
@@ -298,4 +301,10 @@ function BlockEditor({
       </div>
     </div>
   );
+}
+
+/** Shown when today's text has signs of self-harm (lib/safety). Works with AI off. */
+function SupportLine() {
+  const lang = useSyncExternalStore(aiLangStore.subscribe, aiLangStore.get, aiLangStore.getServer);
+  return <p className="mt-10 text-[14px] leading-relaxed text-muted">{SUPPORT_LINE[lang]}</p>;
 }
