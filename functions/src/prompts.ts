@@ -145,3 +145,67 @@ export function checkBlock(raw: unknown): BlockInput {
   const question = typeof b.question === 'string' && b.question.trim() ? b.question.slice(0, 300) : null;
   return { day, time, question, body };
 }
+
+// ---- Look back (weekly / monthly review) ----
+
+export type Pattern = { text: string; days: string[] };
+export type LookBackResult = { patterns: Pattern[]; question: string };
+
+export function buildLookBackPrompt(
+  periodLabel: string,
+  pages: string,
+  lessons: string,
+  lang: Lang,
+): string {
+  return `${VOICE}
+
+Task: LOOK BACK over ${periodLabel}. Find what repeats. Do not give advice.
+
+Return JSON:
+- "patterns": 2 or 3 things that came back more than once: a feeling, a situation, a habit, what gave or took energy.
+  Each: {"text": one or two short sentences, concrete, "days": the dates ("YYYY-MM-DD" exactly as shown) where it shows up}.
+  If a kept lesson was used (or forgotten) in this period, that can be one pattern.
+  Fewer patterns is fine when the pages are few. Never invent one.
+- "question": one open question for writing the review.
+
+${replyLanguageRule(lang)}
+
+${lessons ? `Lessons they kept earlier:\n${lessons}` : 'Lessons they kept earlier: none'}
+
+Their pages in this period (oldest first):
+${pages}`;
+}
+
+export const LOOK_BACK_SCHEMA = {
+  type: 'object',
+  properties: {
+    patterns: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { text: str, days: strList },
+        required: ['text', 'days'],
+      },
+    },
+    question: str,
+  },
+  required: ['patterns', 'question'],
+};
+
+/** Keeps only days really in the period; a pattern needs text. */
+export function parseLookBack(raw: string, knownDays: ReadonlySet<string>): LookBackResult {
+  const j = JSON.parse(raw) as Record<string, unknown>;
+  const list = Array.isArray(j.patterns) ? j.patterns : [];
+  const patterns = list
+    .map((p) => {
+      const days = Array.isArray((p as Pattern)?.days) ? (p as Pattern).days : [];
+      return {
+        text: clean((p as Pattern)?.text),
+        days: [...new Set(days.map((d) => clean(d, 10)).filter((d) => knownDays.has(d)))].sort(),
+      };
+    })
+    .filter((p) => p.text)
+    .slice(0, 3);
+  if (patterns.length === 0) throw new Error('lookBack: no patterns');
+  return { patterns, question: clean(j.question, 300) };
+}

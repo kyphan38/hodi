@@ -9,8 +9,11 @@ export const CONTEXT_DAYS = 60;
 /** Hard cap so one call stays cheap and fast. */
 export const CONTEXT_MAX_CHARS = 60_000;
 
-/** Newest pages first, cut at CONTEXT_MAX_CHARS. Empty pages are skipped. */
-export function formatPast(entries: PastEntry[]): string {
+/**
+ * Pages cut at CONTEXT_MAX_CHARS (the newest are kept), empty pages skipped.
+ * Newest first by default; a review reads better oldest first.
+ */
+export function formatPast(entries: PastEntry[], order: 'newest' | 'oldest' = 'newest'): string {
   const sorted = [...entries].filter((e) => e.text.trim()).sort((a, b) => (a.date < b.date ? 1 : -1));
   const parts: string[] = [];
   let size = 0;
@@ -20,6 +23,7 @@ export function formatPast(entries: PastEntry[]): string {
     parts.push(part);
     size += part.length + 2;
   }
+  if (order === 'oldest') parts.reverse();
   return parts.join('\n\n');
 }
 

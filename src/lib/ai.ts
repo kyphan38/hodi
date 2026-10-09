@@ -30,3 +30,7 @@ export function reflectBlock(block: AiBlock): Promise<{ id: string }> {
 export function nextTimeBlock(block: AiBlock): Promise<{ id: string }> {
   return call('nextTime', { block });
 }
+
+export function lookBackPeriod(period: string): Promise<{ id: string }> {
+  return call('lookBack', { period });
+}
