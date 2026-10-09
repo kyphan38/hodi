@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1-A7 xong và đã deploy (2026-10-09). Plan hoàn tất.** Tiếp theo: chủ app dùng thử rồi chỉnh.
+Ngày viết: 2026-10-09. Trạng thái: **A1-A8 xong và đã deploy (2026-10-09).** A8 gom mọi phân tích AI vào trang `insight`. Tiếp theo: chủ app dùng thử rồi chỉnh.
 
 ## Mục tiêu
 
@@ -231,3 +231,26 @@ bằng emulator, `npm run typecheck && npm test`, rồi mới merge.
 - Bất biến mới: "AI chỉ chạy khi bấm, trừ 2 việc nền 1 lần/ngày. Kết quả AI không trộn vào
   text của trang."
 - Xoá "AI" khỏi "Những gì KHÔNG làm". Ghi vào Nhật ký quyết định.
+
+## A8 - Gom AI vào trang `insight` (2026-10-09)
+
+Chủ app muốn phân tích **cả ngày / vài ngày / tuần / tháng**, không phải nút trong từng khối.
+Today phải trở lại là trang chỉ để viết.
+
+**Bỏ** (code và function trên server): `reflect`, `next time`, `story` ở từng khối, `deeper`,
+kết quả AI dưới khối, `now?` ở On this day, `look back` ở review, `by meaning` ở Days,
+trang `/lessons`.
+
+**Giữ ở Today** (không có nút): câu hỏi đầu ngày do AI chọn + câu hỏi lại lời hứa (#6, #8),
+dòng an toàn.
+
+**Trang `insight`** (thanh trên cùng, chỉ khi AI bật):
+- Chọn nhanh `today · 3 days · 7 days · 30 days` → `analyze`. Function `analyze` đọc mọi
+  trang trong khoảng + bài học + 12 khối cũ liên quan (index A7), trả về:
+  overview, gives energy, takes energy, keeps coming back, went well, the story (nếu có),
+  next time try (`keep`), helped before, 1 câu hỏi. Mỗi ý kèm tối đa 4 ngày, bấm để mở.
+  Lưu ở `aiNotes` (kind `analysis`, `range`, `from`, `to`); hiện bản mới nhất của mỗi khoảng.
+- `search by meaning` (function `search`, A7).
+- `lessons`: danh sách bài học, sửa / `archive`.
+
+**Để sau:** 1 năm (tóm tắt từng tháng trước rồi phân tích 12 bản tóm tắt); tự chọn ngày.

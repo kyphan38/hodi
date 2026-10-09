@@ -9,34 +9,16 @@ import { httpsCallable } from 'firebase/functions';
 
 import { getFunctionsClient } from '@/lib/firebase-client';
 import { aiLangStore } from '@/lib/prefs';
+import type { Range } from '@/types/hodi';
 
 async function call<Req extends object, Res>(name: string, data: Req): Promise<Res> {
-  const fn = httpsCallable<Req & { lang: string }, Res>(getFunctionsClient(), name, { timeout: 60_000 });
+  const fn = httpsCallable<Req & { lang: string }, Res>(getFunctionsClient(), name, { timeout: 120_000 });
   const res = await fn({ ...data, lang: aiLangStore.get() });
   return res.data;
 }
 
 export function pingAi(): Promise<{ ok: boolean; text: string }> {
   return call('ping', {});
-}
-
-export type AiBlock = { day: string; time: string | null; question: string | null; body: string };
-
-/** The function also saves the note; the page shows it from its aiNotes listener. */
-export function reflectBlock(block: AiBlock): Promise<{ id: string }> {
-  return call('reflect', { block });
-}
-
-export function nextTimeBlock(block: AiBlock): Promise<{ id: string }> {
-  return call('nextTime', { block });
-}
-
-export function lookBackPeriod(period: string): Promise<{ id: string }> {
-  return call('lookBack', { period });
-}
-
-export function deeperBlock(block: AiBlock): Promise<{ question: string }> {
-  return call('deeper', { block });
 }
 
 export function dailyQuestion(
@@ -46,12 +28,9 @@ export function dailyQuestion(
   return call('daily', { day, candidates });
 }
 
-export function storyBlock(block: AiBlock): Promise<{ id: string }> {
-  return call('story', { block });
-}
-
-export function thenAndNow(day: string, then: string): Promise<{ id: string }> {
-  return call('onThisDay', { day, then });
+/** The function also saves the analysis; the page shows it from its listener. */
+export function analyzeRange(day: string, range: Range): Promise<{ id: string }> {
+  return call('analyze', { day, range });
 }
 
 export type MeaningHit = { day: string; time: string | null; question: string | null; text: string; score: number };

@@ -12,19 +12,16 @@ import {
   type RefObject,
 } from 'react';
 
-import AiNoteView from '@/components/AiNoteView';
 import GrowText from '@/components/GrowText';
 import OnThisDay from '@/components/OnThisDay';
 import { ReviewInvites } from '@/components/ReviewView';
 import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
-import { useAiNotes } from '@/hooks/useAiNotes';
 import { useDailyQuestions } from '@/hooks/useDailyQuestions';
 import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { lastInputAt } from '@/lib/activity';
-import { deeperBlock, nextTimeBlock, reflectBlock, storyBlock } from '@/lib/ai';
 import { answered, parseBlocks, serializeBlocks, type Block } from '@/lib/blocks';
 import { countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
@@ -73,9 +70,6 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     useSyncExternalStore(questionsStore.subscribe, questionsStore.get, questionsStore.getServer) === 'on';
   const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
   const [skip, setSkip] = useState(0);
-  // "deeper": the AI follow-up replaces the next question until a block starts.
-  const [deeperQ, setDeeperQ] = useState<string | null>(null);
-  const [justDone, setJustDone] = useState<number | null>(null);
   const [freeWrite, setFreeWrite] = useState(false);
   // The open block. null = nothing written in the new block yet (showing the prompt question).
   const [editing, setEditing] = useState<number | null>(null);
@@ -93,63 +87,19 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   }, [blocks]);
 
   // Prompt: the next question not answered today. "another" moves one on.
+  // AI (PLAN-ai #6, #8): a follow-up on a promise, then the day's picked question.
   const picks = useDailyQuestions(uid, day, aiOn && questionsOn);
   const suggestion = nextQuestion(day, answered(blocks), skip, picks);
   const composing = editing === null;
-  const activeQuestion = composing
-    ? (deeperQ ?? (questionsOn && !freeWrite ? suggestion.question : null))
-    : blocks[editing]?.question;
+  const activeQuestion = composing ? (questionsOn && !freeWrite ? suggestion.question : null) : blocks[editing]?.question;
 
   const write = (next: Block[]) => page.setText(serializeBlocks(next));
-
-  const notes = useAiNotes(uid, day, aiOn);
-  const notesFor = (b: Block) => (b.time ? notes.filter((n) => n.blockTime === b.time) : []);
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiFailed, setAiFailed] = useState(false);
-
-  /** Sends one block; the function saves the note and the listener shows it. */
-  const askAi = async (kind: 'reflect' | 'nextTime' | 'story', i: number) => {
-    const b = blocks[i];
-    if (!b?.body.trim() || aiBusy) return;
-    page.flush();
-    setAiBusy(true);
-    setAiFailed(false);
-    try {
-      const send = { reflect: reflectBlock, nextTime: nextTimeBlock, story: storyBlock }[kind];
-      await send({ day, time: b.time, question: b.question, body: b.body });
-    } catch (err) {
-      console.warn('[ai] call failed', err);
-      setAiFailed(true);
-    } finally {
-      setAiBusy(false);
-    }
-  };
-
-  const askDeeper = async () => {
-    const b = justDone === null ? undefined : blocks[justDone];
-    if (!b?.body.trim() || aiBusy) return;
-    setAiBusy(true);
-    setAiFailed(false);
-    try {
-      const { question } = await deeperBlock({ day, time: b.time, question: b.question, body: b.body });
-      setDeeperQ(question);
-      setFocusAsk((n) => n + 1);
-    } catch (err) {
-      console.warn('[ai] deeper failed', err);
-      setAiFailed(true);
-    } finally {
-      setAiBusy(false);
-    }
-  };
-  const canDeeper = aiOn && justDone !== null && !deeperQ && !!blocks[justDone]?.body.trim();
 
   const onActiveChange = (value: string) => {
     if (composing) {
       if (value === '') return;
       // The first character opens a new block, stamped with the start time.
       const block: Block = { time: timeLabel(Date.now()), question: activeQuestion, body: value };
-      setDeeperQ(null);
-      setJustDone(null);
       setEditing(blocks.length);
       write([...blocks, block]);
       return;
@@ -169,8 +119,6 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     if (editing === null) return;
     const kept = blocks.filter((b, i) => i !== editing || b.body.trim() !== '');
     if (kept.length !== blocks.length) write(kept);
-    setJustDone(blocks[editing]?.body.trim() ? editing : null);
-    setDeeperQ(null);
     setEditing(null);
     setFreeWrite(false);
     page.flush();
@@ -210,32 +158,6 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   }, [page.loaded]);
 
   const link = 'py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink';
-
-  const aiLinks = (i: number) =>
-    aiOn && blocks[i]?.body.trim() ? (
-      <p className="flex gap-2">
-        {aiBusy ? (
-          <span className="py-1 font-mono text-[11px] text-faint">…</span>
-        ) : (
-          <>
-            <button type="button" onClick={() => askAi('reflect', i)} className={link}>
-              reflect
-            </button>
-            <span className="py-1 text-[11px] text-faint">·</span>
-            <button type="button" onClick={() => askAi('nextTime', i)} className={link}>
-              next time
-            </button>
-            <span className="py-1 text-[11px] text-faint">·</span>
-            <button type="button" onClick={() => askAi('story', i)} className={link}>
-              story
-            </button>
-            {aiFailed && <span className="py-1 font-mono text-[11px] text-faint">failed</span>}
-          </>
-        )}
-      </p>
-    ) : null;
-  const notesUnder = (b: Block | undefined) =>
-    b ? notesFor(b).map((n) => <AiNoteView key={n.id} uid={uid} note={n} />) : null;
   const activeBody = composing ? '' : (blocks[editing]?.body ?? '');
 
   return (
@@ -263,9 +185,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                     onChange={onActiveChange}
                     onKeyDown={onKeyDown}
                     onDone={done}
-                    links={aiLinks(i)}
                   />
-                  {notesUnder(b)}
                 </li>
               );
             }
@@ -287,7 +207,6 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                     </span>
                   </span>
                 </button>
-                {notesUnder(b)}
               </li>
             );
           })}
@@ -309,22 +228,11 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                 <p className="flex gap-2">
                   {activeQuestion ? (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => (deeperQ ? setDeeperQ(null) : setSkip(suggestion.skip + 1))}
-                        className={link}
-                      >
+                      <button type="button" onClick={() => setSkip(suggestion.skip + 1)} className={link}>
                         another
                       </button>
                       <span className="py-1 text-[11px] text-faint">·</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeeperQ(null);
-                          setFreeWrite(true);
-                        }}
-                        className={link}
-                      >
+                      <button type="button" onClick={() => setFreeWrite(true)} className={link}>
                         free write
                       </button>
                     </>
@@ -335,26 +243,10 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                       </button>
                     )
                   )}
-                  {canDeeper && (
-                    <>
-                      <span className="py-1 text-[11px] text-faint">·</span>
-                      {aiBusy ? (
-                        <span className="py-1 font-mono text-[11px] text-faint">…</span>
-                      ) : (
-                        <button type="button" onClick={askDeeper} className={link}>
-                          deeper
-                        </button>
-                      )}
-                    </>
-                  )}
-                  {aiFailed && composing && <span className="py-1 font-mono text-[11px] text-faint">failed</span>}
                 </p>
-              ) : (
-                aiLinks(editing ?? -1)
-              )
+              ) : null
             }
           />
-          {!composing && notesUnder(blocks[last])}
         </div>
       )}
 
