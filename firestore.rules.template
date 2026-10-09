@@ -3,7 +3,10 @@ rules_version = '2';
 // ============================================================
 // hodi - Firestore rules
 //
-// hodi has no server. Rules are the ONLY guard, so unlike the other apps
+// The only server code is functions/ (AI). It uses the Admin SDK, which skips
+// these rules, so AI-written data is read-only here.
+//
+// Rules are the guard for the browser, so unlike the other apps
 // (uid check only) this also checks the email: a stranger signing in with
 // Google on this project cannot read or write anything, even under their own uid.
 //
@@ -62,6 +65,36 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow create, update: if isOwner(uid) && validReview(request.resource.data, period);
       allow delete: if false;
+    }
+
+    // Lessons kept from AI "next time" advice. Archived, never deleted (rule #6).
+    function validLesson(d) {
+      return d.keys().hasOnly(['text', 'situation', 'sourceDay', 'archived', 'createdAt', 'updatedAt'])
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 2000
+        && d.situation is string && d.situation.size() <= 2000
+        && isDay(d.sourceDay)
+        && d.archived is bool
+        && d.createdAt is int && d.updatedAt is int;
+    }
+
+    match /users/{uid}/lessons/{id} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validLesson(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Written by functions/ only (Admin SDK).
+    match /users/{uid}/aiNotes/{id} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+    match /users/{uid}/intentions/{id} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+    match /users/{uid}/meta/{id} {
+      allow read: if isOwner(uid);
+      allow write: if false;
     }
 
     match /{document=**} {

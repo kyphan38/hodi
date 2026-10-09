@@ -20,6 +20,10 @@ export const themeStore = stringStore<Theme>('hodi.theme', 'system', oneOf(['sys
 export const sizeStore = stringStore<TextSize>('hodi.size', 'm', oneOf(['s', 'm', 'l']));
 export const questionsStore = stringStore<'on' | 'off'>('hodi.questions', 'on', oneOf(['on', 'off']));
 export const typewriterStore = stringStore<'on' | 'off'>('hodi.typewriter', 'off', oneOf(['on', 'off']));
+export type AiLang = 'vi' | 'en';
+// Off by default: AI sends journal text to Gemini, so it must be a clear choice.
+export const aiStore = stringStore<'on' | 'off'>('hodi.ai', 'off', oneOf(['on', 'off']));
+export const aiLangStore = stringStore<AiLang>('hodi.aiLang', 'vi', oneOf(['vi', 'en']));
 
 /** Status bar color (theme-color) - matches --bg in globals.css. */
 export const BG_LIGHT = '#fafafa';

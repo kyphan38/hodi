@@ -20,6 +20,7 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions';
 
 export const USE_EMULATORS = process.env.NEXT_PUBLIC_USE_EMULATORS === '1';
 
@@ -68,6 +69,7 @@ export function missingConfig(): string[] {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+let fns: Functions | null = null;
 
 function getFirebaseApp(): FirebaseApp {
   if (app) return app;
@@ -105,4 +107,12 @@ export function getDb(): Firestore {
   }
   if (USE_EMULATORS) connectFirestoreEmulator(db, '127.0.0.1', 8080);
   return db;
+}
+
+/** Cloud Functions (AI only). Same region as functions/src/index.ts. */
+export function getFunctionsClient(): Functions {
+  if (fns) return fns;
+  fns = getFunctions(getFirebaseApp(), 'asia-southeast1');
+  if (USE_EMULATORS) connectFunctionsEmulator(fns, '127.0.0.1', 5001);
+  return fns;
 }

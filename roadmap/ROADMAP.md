@@ -4,7 +4,8 @@ App nhật ký tối giản. Next.js (static export) + Firebase (Auth + Firestor
 Một người dùng duy nhất, iPhone + Mac, giao diện tiếng Anh, viết tiếng Việt/Anh tuỳ ý.
 
 Cùng hệ sinh thái với fina/logi/noda (Firebase project riêng, Google login 1 email, format
-icon, PWA), nhưng **cố ý khác** ở hai chỗ: không có server, và giao diện "tờ giấy".
+icon, PWA), nhưng **cố ý khác** ở hai chỗ: site không có server (chỉ Cloud Functions cho AI),
+và giao diện "tờ giấy".
 
 ---
 
@@ -21,15 +22,19 @@ Bất biến. Agent thực thi không được đổi mà không hỏi.
    Có chữ chưa lưu mà server đổi → gộp (`mergeTexts`), không bỏ bên nào.
 5. **Không áp lực.** Không streak, không thông báo, không huy hiệu, không mục tiêu số chữ.
    Mỗi lúc chỉ hiện 1 câu hỏi; trả lời xong bấm `done` thì câu tiếp theo mới hiện. Không
-   đếm, không nhắc - muốn dừng thì đóng app.
+   đếm, không nhắc - muốn dừng thì đóng app. AI không bao giờ tự khuyên; câu hỏi lại việc
+   đã hứa (PLAN-ai #8) chỉ hỏi 1 lần.
 6. **Không xoá dữ liệu.** Rules `allow delete: if false`.
 7. **Đơn sắc.** Màu chỉ mang nghĩa (độ đậm heatmap). SVG `currentColor`, không emoji.
-8. **Không server.** Không API route, không secret phía server. Bảo vệ dữ liệu = Firestore
-   rules, kiểm cả uid lẫn email.
+8. **Không server, trừ AI.** Site vẫn static, không API route. Server chỉ có Cloud Functions
+   trong `functions/` cho AI (giữ key Gemini). Bảo vệ dữ liệu = Firestore rules, kiểm cả uid
+   lẫn email; functions kiểm cùng email.
 9. **Yên lặng.** Không toast/popup. Trạng thái lưu = một chấm nhỏ.
 10. **Riêng tư.** Tiêu đề tab luôn là "hodi"; làm mờ khi app bị ẩn; sign out xoá cache trên máy.
 11. **iPhone PWA là target chính**; Mac là màn hình thứ hai.
 12. **Tối giản.** Ý mới → ghi vào "Để sau" bên dưới, không tự làm.
+13. **AI là lựa chọn.** Mặc định tắt. Chỉ chạy khi bấm, trừ 1 lần gọi nền mỗi ngày. Kết quả
+    AI lưu riêng (`aiNotes`), không trộn vào text của trang. Chi tiết: `PLAN-ai.md`.
 
 ---
 
@@ -76,7 +81,7 @@ file sinh ra không commit).
 ## Những gì KHÔNG làm
 
 - Backup/restore `.json` (Firestore là nguồn chính, export `.md` là đủ).
-- Tag, highlight, ảnh, mood, AI, thông báo, streak, mục tiêu số chữ.
+- Tag, highlight, ảnh, mood, thông báo, streak, mục tiêu số chữ.
 - Khoá Face ID ở v1. Markdown render. Nhiều bài trong một ngày.
 - Gợi ý Add to Home Screen, tự mờ khi không dùng, nhắc viết bù, theme theo giờ,
   âm thanh/rung, splash screen iOS, tự tiếp danh sách `- `, xoay ngang, link bấm được.
@@ -103,3 +108,4 @@ file sinh ra không commit).
 | 2026-10-05 | Mốc giờ đổi từ dấu gạch dài sang `· 21:40` | Workspace cấm dấu gạch dài (AGENTS.md) |
 | 2026-10-05 | Today thành từng khối: câu hỏi → viết → `done` → câu tiếp theo; `free write`; khối xong thành danh sách mờ, chạm để sửa; mỗi khối có giờ, bỏ mốc giờ tự động sau 1 tiếng | Chủ app muốn tập trung từng câu và có cảm giác "xong"; giữ một trang chữ thô nên export/search/heatmap không đổi |
 | 2026-10-09 | Chạm heatmap năm → phóng to thành lịch tháng (ô to, có số ngày); chạm ngày → mở trang đó, kể cả ngày trống | Ô 9px không bấm trúng trên iPhone; ngày trống chỉ vào được từ heatmap nên cần dễ bấm để viết bù |
+| 2026-10-09 | Thêm AI (Gemini, AI Studio key) qua Cloud Functions; mặc định tắt; ngôn ngữ trả lời Việt/Anh | Chủ app muốn AI giúp rút kinh nghiệm ("next time"); key không được nằm ở client |
