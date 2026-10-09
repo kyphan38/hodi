@@ -34,3 +34,11 @@ export function nextTimeBlock(block: AiBlock): Promise<{ id: string }> {
 export function lookBackPeriod(period: string): Promise<{ id: string }> {
   return call('lookBack', { period });
 }
+
+export function deeperBlock(block: AiBlock): Promise<{ question: string }> {
+  return call('deeper', { block });
+}
+
+export function dailyQuestion(day: string, candidates: readonly string[]): Promise<{ question: string | null }> {
+  return call('daily', { day, candidates });
+}

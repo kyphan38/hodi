@@ -119,8 +119,17 @@ export function askedIn(text: string): Set<string> {
   return out;
 }
 
-/** The next question (from `skip` on) not yet answered today. */
-export function nextQuestion(day: string, asked: Set<string>, skip: number): { question: string; skip: number } {
+/**
+ * The next question (from `skip` on) not yet answered today. `pick` (the AI's
+ * choice for today) comes first; "another" moves on to the usual order.
+ */
+export function nextQuestion(
+  day: string,
+  asked: Set<string>,
+  skip: number,
+  pick: string | null = null,
+): { question: string; skip: number } {
+  if (pick && skip === 0 && !asked.has(pick)) return { question: pick, skip: 0 };
   for (let i = 0; i < QUESTIONS.length; i++) {
     const q = questionFor(day, skip + i);
     if (!asked.has(q)) return { question: q, skip: skip + i };

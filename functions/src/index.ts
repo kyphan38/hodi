@@ -19,13 +19,20 @@ import { addDaysId, periodRange } from './dates.ts';
 import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
 import {
+  buildDeeperPrompt,
   buildLookBackPrompt,
+  buildPickPrompt,
   buildNextTimePrompt,
   buildReflectPrompt,
   checkBlock,
+  checkCandidates,
+  DEEPER_SCHEMA,
   LOOK_BACK_SCHEMA,
   NEXT_TIME_SCHEMA,
+  parseDeeper,
   parseLookBack,
+  parsePick,
+  PICK_SCHEMA,
   parseNextTime,
   parseReflect,
   REFLECT_SCHEMA,
@@ -181,4 +188,65 @@ export const lookBack = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 90 }
     const id = await saveNote(uid, period, null, 'lookBack', result);
     return { id, result };
   });
+});
+
+/** One follow-up question after "done". Not saved: it becomes the next block's question. */
+export const deeper = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 30 }, async (req) => {
+  guard(req);
+  const { block, lang } = readInput(req);
+  return run('deeper', async () => {
+    const raw = await generateText(GEMINI_API_KEY.value(), GEMINI_MODEL.value(), buildDeeperPrompt(block, lang), {
+      temperature: 0.7,
+      timeoutMs: 20_000,
+      jsonSchema: DEEPER_SCHEMA,
+    });
+    return { question: parseDeeper(raw) };
+  });
+});
+
+/** Days of pages read for the daily pick. */
+const DAILY_DAYS = 7;
+
+/**
+ * Called by Today on the first open of a day (AI on). Picks today's question
+ * from the app's list using the last days, once a day: the answer is kept in
+ * users/{uid}/meta/ai and read from there afterwards. PLAN-ai #8 hooks in here later.
+ */
+export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 30 }, async (req) => {
+  const uid = guard(req);
+  const data = (req.data ?? {}) as { day?: unknown; candidates?: unknown };
+  const day = typeof data.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.day) ? data.day : null;
+  let candidates: string[];
+  try {
+    candidates = checkCandidates(data.candidates);
+  } catch {
+    throw new HttpsError('invalid-argument', 'Bad candidates');
+  }
+  if (!day) throw new HttpsError('invalid-argument', 'Bad day');
+
+  const user = getFirestore().collection('users').doc(uid);
+  const metaRef = user.collection('meta').doc('ai');
+  const meta = (await metaRef.get()).data() as { questionFor?: { day: string; text: string } | null } | undefined;
+  if (meta?.questionFor?.day === day) return { question: meta.questionFor.text };
+
+  const snap = await user
+    .collection('entries')
+    .where('date', '>=', addDaysId(day, -DAILY_DAYS))
+    .where('date', '<', day)
+    .get();
+  const recent = formatPast(snap.docs.map((d) => d.data() as PastEntry));
+  let question: string | null = null;
+  if (recent) {
+    question = await run('daily', async () => {
+      const raw = await generateText(GEMINI_API_KEY.value(), GEMINI_MODEL.value(), buildPickPrompt(recent, candidates), {
+        temperature: 0.3,
+        timeoutMs: 20_000,
+        jsonSchema: PICK_SCHEMA,
+      });
+      return parsePick(raw, candidates);
+    });
+  }
+  // Saved even when null, so a quiet week does not call again on every open.
+  await metaRef.set({ lastDailyRun: day, questionFor: question ? { day, text: question } : { day, text: '' } }, { merge: true });
+  return { question };
 });

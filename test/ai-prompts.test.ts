@@ -5,7 +5,12 @@ import { CONTEXT_MAX_CHARS, formatLessons, formatPast } from '../functions/src/c
 import { addDaysId, periodRange } from '../functions/src/dates.ts';
 import { periodDays } from '@/lib/review';
 import {
+  buildDeeperPrompt,
   buildLookBackPrompt,
+  buildPickPrompt,
+  checkCandidates,
+  parseDeeper,
+  parsePick,
   buildNextTimePrompt,
   buildReflectPrompt,
   checkBlock,
@@ -120,4 +125,24 @@ test('look back prompt names the period and the language', () => {
   const p = buildLookBackPrompt('the month 2026-10', '### 2026-10-01\nhi', '', 'vi');
   assert.match(p, /the month 2026-10/);
   assert.match(p, /Vietnamese/);
+});
+
+test('deeper prompt has the block; parseDeeper cleans one line', () => {
+  assert.match(buildDeeperPrompt(block, 'vi'), /I snapped at my brother/);
+  assert.equal(parseDeeper(JSON.stringify({ question: ' What did you\n need then? ' })), 'What did you need then?');
+  assert.throws(() => parseDeeper(JSON.stringify({ question: '' })));
+});
+
+test('pick prompt numbers the list; parsePick needs a valid index', () => {
+  const list = ['A?', 'B?', 'C?'];
+  assert.match(buildPickPrompt('### 2026-10-08\nhi', list), /1\. B\?/);
+  assert.equal(parsePick(JSON.stringify({ index: 2 }), list), 'C?');
+  assert.throws(() => parsePick(JSON.stringify({ index: 3 }), list));
+  assert.throws(() => parsePick(JSON.stringify({ index: 1.5 }), list));
+});
+
+test('checkCandidates drops junk and refuses empty lists', () => {
+  assert.deepEqual(checkCandidates(['A?', '', 3, 'B?']), ['A?', 'B?']);
+  assert.throws(() => checkCandidates([]));
+  assert.throws(() => checkCandidates('A?'));
 });

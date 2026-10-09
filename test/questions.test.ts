@@ -22,3 +22,11 @@ test('the next question skips ones answered today', () => {
 test('reads the questions in a page', () => {
   assert.deepEqual([...askedIn('· 08:10\n› Q1?\nabc\n\n· 09:00\n› Q2?\n')], ['Q1?', 'Q2?']);
 });
+
+test('the AI pick comes first, until answered or skipped', () => {
+  const day = '2026-10-05';
+  const pick = QUESTIONS[3];
+  assert.deepEqual(nextQuestion(day, new Set(), 0, pick), { question: pick, skip: 0 });
+  assert.notEqual(nextQuestion(day, new Set([pick]), 0, pick).question, pick);
+  assert.equal(nextQuestion(day, new Set(), 1, pick).question, nextQuestion(day, new Set(), 1).question);
+});
