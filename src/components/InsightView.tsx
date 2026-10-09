@@ -1,24 +1,27 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 
 import GrowText from '@/components/GrowText';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
 import { useJournal } from '@/contexts/JournalContext';
-import { analyzeRange, searchByMeaning, type MeaningHit } from '@/lib/ai';
+import { analyzeRange, searchByMeaning, talkAbout, type MeaningHit } from '@/lib/ai';
 import { clockStore } from '@/lib/clock';
-import { dayOf, dayShort, dayTiny } from '@/lib/day';
+import { dayLong, dayOf, dayShort, dayTiny, isDayId } from '@/lib/day';
 import { getDb } from '@/lib/firebase-client';
 import { keepLesson, updateLesson } from '@/lib/lessons';
-import type { Analysis, Dated, Lesson, Range } from '@/types/hodi';
+import type { Analysis, Dated, Lesson, Range, Talk } from '@/types/hodi';
 
 // ============================================================
 // hodi - Insight: every AI feature in one page (PLAN-ai A8)
 //
-// Analyze a range of days, search by meaning, and the kept lessons.
+// Analyze a range of days (with a short talk on each), search by meaning,
+// the kept lessons and the history. Analyses live for one day: tomorrow the
+// page starts empty, and today's ones move to the history (read-only).
 // Today stays a plain writing page.
 // ============================================================
 
@@ -38,6 +41,9 @@ export default function InsightView() {
   const today = dayOf(now);
   const [range, setRange] = useState<Range>('today');
   const analyses = useAnalyses(uid);
+  const past = useSearchParams().get('d');
+
+  if (isDayId(past) && past !== today) return <PastDay uid={uid} day={past} analyses={analyses} />;
 
   return (
     <main className="paper pb-24">
@@ -63,12 +69,14 @@ export default function InsightView() {
         uid={uid}
         today={today}
         range={range}
-        latest={analyses.filter((a) => a.range === range).at(-1)}
+        latest={analyses.filter((a) => a.range === range && a.day === today).at(-1)}
       />
 
       <MeaningSearch />
 
       <Lessons uid={uid} />
+
+      <History analyses={analyses} today={today} />
     </main>
   );
 }
@@ -119,7 +127,6 @@ function RangeAnalysis({
       setState(code.endsWith('failed-precondition') ? 'empty' : 'failed');
     }
   };
-  const fresh = latest?.to === today;
   // Writing after the analysis (in its range) makes it out of date.
   const { entries } = useJournal();
   const outdated =
@@ -137,16 +144,19 @@ function RangeAnalysis({
         )}
         {state === 'failed' && <span className={label}>failed</span>}
         {state === 'empty' && <span className={label}>no pages in this range</span>}
-        {latest && !fresh && state !== 'busy' && <span className={label}>last: {rangeTitle(latest)}</span>}
-        {latest && fresh && outdated && state !== 'busy' && <span className={label}>new writing since</span>}
+        {latest && outdated && state !== 'busy' && <span className={label}>new writing since</span>}
       </p>
-      {latest && <AnalysisView uid={uid} a={latest} />}
+      {latest && <AnalysisView uid={uid} a={latest} live />}
     </section>
   );
 }
 
-function AnalysisView({ uid, a }: { uid: string; a: Analysis }) {
+/** `live`: today's analysis, the talk can go on. Past ones are read-only. */
+function AnalysisView({ uid, a, live = false }: { uid: string; a: Analysis; live?: boolean }) {
   const r = a.result;
+  const talk = useTalk(uid, a.id);
+  const [talking, setTalking] = useState(false);
+  const showTalk = talking || !!talk;
   return (
     <article className="mt-4 text-[15px] leading-relaxed">
       <p className={label}>{rangeTitle(a)}</p>
@@ -188,7 +198,17 @@ function AnalysisView({ uid, a }: { uid: string; a: Analysis }) {
           </ul>
         </Section>
       )}
-      {r.question && <p className="mt-5 text-faint">{r.question}</p>}
+      {r.question && !showTalk && (
+        <div className="mt-5">
+          <p className="text-faint">{r.question}</p>
+          {live && (
+            <button type="button" onClick={() => setTalking(true)} className={link}>
+              write about this
+            </button>
+          )}
+        </div>
+      )}
+      {showTalk && <TalkView uid={uid} a={a} talk={talk} live={live} />}
     </article>
   );
 }
@@ -408,5 +428,145 @@ function LessonEditor({ uid, lesson, onClose }: { uid: string; lesson: Lesson; o
         </p>
       </div>
     </li>
+  );
+}
+
+// ---- Talk ("write about this") ----
+
+function useTalk(uid: string, analysisId: string): Talk | null {
+  const [talk, setTalk] = useState<Talk | null>(null);
+  useEffect(
+    () =>
+      onSnapshot(
+        doc(getDb(), 'users', uid, 'aiChats', analysisId),
+        (snap) => setTalk(snap.exists() ? ({ ...(snap.data() as Omit<Talk, 'id'>), id: snap.id } as Talk) : null),
+        (err) => console.error('[ai] talk watch failed', err),
+      ),
+    [uid, analysisId],
+  );
+  return talk;
+}
+
+/**
+ * A short chat that starts from the analysis question. The function stores
+ * both sides; until the first reply the question is shown on its own.
+ */
+function TalkView({ uid, a, talk, live }: { uid: string; a: Analysis; talk: Talk | null; live: boolean }) {
+  const [text, setText] = useState('');
+  const [pending, setPending] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const messages = talk?.messages ?? [{ role: 'ai' as const, text: a.result.question, at: a.createdAt }];
+  const open = live && !talk?.done;
+
+  useEffect(() => {
+    if (open) ref.current?.focus({ preventScroll: true });
+  }, [open]);
+
+  const send = async () => {
+    const msg = text.trim();
+    if (!msg || pending) return;
+    setPending(msg);
+    setText('');
+    setFailed(false);
+    try {
+      await talkAbout(a.id, a.day, msg);
+    } catch (err) {
+      console.warn('[ai] talk failed', err);
+      setText(msg);
+      setFailed(true);
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="mt-6 border-t border-line pt-4">
+      <p className={label}>talk</p>
+      <ul className="mt-2 space-y-4">
+        {messages.map((m, i) => (
+          <li key={i}>
+            {m.role === 'me' ? (
+              <p className="whitespace-pre-wrap text-ink">{m.text}</p>
+            ) : (
+              <>
+                <p className="text-muted">{m.text}</p>
+                {m.steps && m.steps.length > 0 && (
+                  <div className="mt-2">
+                    <Steps uid={uid} steps={m.steps} situation={a.result.question} day={a.day} />
+                  </div>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+        {pending && (
+          <li>
+            <p className="whitespace-pre-wrap text-ink">{pending}</p>
+            <p className={`${label} mt-2`}>…</p>
+          </li>
+        )}
+      </ul>
+      {open && !pending && (
+        <div className="page-text mt-4">
+          <GrowText value={text} onChange={setText} label="Your answer" placeholder="Write back" textareaRef={ref} />
+          <p className="mt-2 flex items-baseline justify-end gap-3">
+            {failed && <span className={label}>failed</span>}
+            <button type="button" disabled={!text.trim()} onClick={send} className={`${link} disabled:opacity-40`}>
+              send
+            </button>
+          </p>
+        </div>
+      )}
+      {talk?.done && <p className={`${label} mt-4`}>closed</p>}
+    </div>
+  );
+}
+
+// ---- History ----
+
+/** Past days with analyses, newest first. Each opens a read-only view. */
+function History({ analyses, today }: { analyses: Analysis[]; today: string }) {
+  const days = [...new Set(analyses.filter((a) => a.day < today).map((a) => a.day))].sort().reverse();
+  if (days.length === 0) return null;
+  return (
+    <section className="mt-16">
+      <p className={label}>history</p>
+      <ul className="mt-3">
+        {days.slice(0, HISTORY_DAYS).map((d) => {
+          const ranges = RANGES.filter((r) => analyses.some((a) => a.day === d && a.range === r.value));
+          return (
+            <li key={d}>
+              <Link href={`/insight/?d=${d}`} className="group flex items-baseline gap-4 py-1.5">
+                <span className="w-14 shrink-0 text-[13px] whitespace-nowrap text-faint tabular-nums">{dayShort(d)}</span>
+                <span className="text-muted group-hover:text-ink">{ranges.map((r) => r.label).join(' · ')}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+const HISTORY_DAYS = 60;
+
+/** A past day: its newest analysis per range, with the talk, read-only. */
+function PastDay({ uid, day, analyses }: { uid: string; day: string; analyses: Analysis[] }) {
+  const list = RANGES.map((r) => analyses.filter((a) => a.day === day && a.range === r.value).at(-1)).filter(
+    (a): a is Analysis => !!a,
+  );
+  return (
+    <main className="paper pb-24">
+      <TopBar current="insight" left={<Link href="/insight/">insight</Link>} />
+      <p className="mt-10 text-[15px] text-ink">{dayLong(day)}</p>
+      {list.length === 0 && <p className="mt-6 text-faint">Nothing on this day.</p>}
+      {list.map((a) => (
+        <section key={a.id} className="mt-10">
+          <p className={label}>{RANGES.find((r) => r.value === a.range)?.label}</p>
+          <AnalysisView uid={uid} a={a} />
+        </section>
+      ))}
+    </main>
   );
 }

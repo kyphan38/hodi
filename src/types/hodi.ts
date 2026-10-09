@@ -68,3 +68,17 @@ export type Analysis = {
   result: AnalysisResult;
   createdAt: number;
 };
+
+export type TalkMessage = { role: 'ai' | 'me'; text: string; steps?: string[]; at: number };
+
+/** users/{uid}/aiChats/{analysisId} - "write about this", written by functions/ only. */
+export type Talk = {
+  id: string;
+  day: string;
+  analysisId: string;
+  topic: string;
+  messages: TalkMessage[];
+  done: boolean;
+  createdAt: number;
+  updatedAt: number;
+};

@@ -39,3 +39,12 @@ export type MeaningHit = { day: string; time: string | null; question: string | 
 export function searchByMeaning(query: string): Promise<{ hits: MeaningHit[]; partial: boolean }> {
   return call('search', { query });
 }
+
+/** One message in the talk on an analysis; the function stores both sides. */
+export function talkAbout(
+  analysisId: string,
+  day: string,
+  text: string,
+): Promise<{ reply: string; steps: string[]; done: boolean }> {
+  return call('talk', { analysisId, day, text });
+}

@@ -312,3 +312,84 @@ export function parseIntentions(
   }
   return out.slice(0, 3);
 }
+
+// ---- Talk it through: a short chat that starts from an analysis question ----
+
+export type TalkMessage = { role: 'ai' | 'me'; text: string };
+export type TalkReply = { reply: string; steps: string[]; done: boolean };
+
+/** Replies per talk. Past this the talk closes, so it stays a short untangling, not a chat app. */
+export const TALK_MAX_REPLIES = 12;
+/** From this reply on, move from questions to options. */
+const TALK_OPTIONS_FROM = 5;
+export const TALK_MAX_CHARS = 2_000;
+
+export function buildTalkPrompt(
+  analysis: string,
+  pages: string,
+  lessons: string,
+  messages: readonly TalkMessage[],
+  lang: Lang,
+): string {
+  const replyNo = messages.filter((m) => m.role === 'ai').length;
+  return `${VOICE}
+
+Task: TALK IT THROUGH. You are in a short chat that started from a question about their journal.
+Help them untangle one knot, step by step:
+1. Understand: what happened, what they felt, what they want. Ask; do not assume.
+2. Untangle: separate facts from feelings and from the story they tell; what is in their control and what is not.
+3. Options: when the picture is clear, or as soon as they ask for ideas, offer 1-3 small concrete steps in "steps".
+4. Close: when the knot is loose or they want to stop, sum up in one sentence what they found and set "done": true.
+
+How to talk:
+- "reply": 1-3 short sentences. At most ONE question per reply. Use their own words back.
+- No options in the first reply unless they ask. Never repeat a question they already answered.
+- This is reply ${replyNo + 1} of at most ${TALK_MAX_REPLIES}.${replyNo + 1 >= TALK_OPTIONS_FROM ? ' Move to options now if you have not yet.' : ''}${replyNo + 1 >= TALK_MAX_REPLIES ? ' This is the last reply: close.' : ''}
+- "steps": [] unless you are offering options in this reply.
+
+Return JSON: {"reply": "...", "steps": [...], "done": true|false}
+
+${replyLanguageRule(lang)}
+
+What the analysis said:
+${analysis}
+
+${lessons ? `Lessons they kept earlier:\n${lessons}` : 'Lessons they kept earlier: none'}
+
+Their pages in the analysed range (oldest first):
+${pages}
+
+The chat so far:
+${messages.map((m) => `${m.role === 'ai' ? 'You' : 'Them'}: ${m.text}`).join('\n')}`;
+}
+
+export const TALK_SCHEMA = {
+  type: 'object',
+  properties: { reply: str, steps: strList, done: { type: 'boolean' } },
+  required: ['reply', 'steps', 'done'],
+};
+
+export function parseTalk(raw: string, isLast: boolean): TalkReply {
+  const j = JSON.parse(raw) as Record<string, unknown>;
+  const reply = clean(j.reply, 1_000);
+  if (!reply) throw new Error('talk: empty reply');
+  const steps = Array.isArray(j.steps) ? j.steps.map((x) => clean(x, 300)).filter(Boolean).slice(0, 3) : [];
+  return { reply, steps, done: isLast || j.done === true };
+}
+
+/** The analysis as plain text, so the talk knows what was already said. */
+export function analysisText(r: AnalysisResult): string {
+  const list = (title: string, xs: Dated[]) => (xs.length ? `${title}: ${xs.map((x) => x.text).join('; ')}` : '');
+  return [
+    r.overview,
+    list('Gives energy', r.gives),
+    list('Takes energy', r.takes),
+    list('Keeps coming back', r.patterns),
+    list('Went well', r.wins),
+    r.story ? `Story: "${r.story.story}". Truer: ${r.story.truer}` : '',
+    r.steps.length ? `Steps offered: ${r.steps.join('; ')}` : '',
+    `Question asked: ${r.question}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

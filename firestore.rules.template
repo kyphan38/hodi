@@ -88,6 +88,10 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow write: if false;
     }
+    match /users/{uid}/aiChats/{id} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
     match /users/{uid}/intentions/{id} {
       allow read: if isOwner(uid);
       allow write: if false;

@@ -22,7 +22,15 @@ import { embedTexts } from './embed.ts';
 import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
 import {
+  analysisText,
   ANALYZE_SCHEMA,
+  buildTalkPrompt,
+  parseTalk,
+  TALK_MAX_CHARS,
+  TALK_MAX_REPLIES,
+  TALK_SCHEMA,
+  type AnalysisResult,
+  type TalkMessage,
   buildAnalyzePrompt,
   buildIntentionsPrompt,
   buildPickPrompt,
@@ -296,5 +304,72 @@ export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }
       .collection('aiNotes')
       .add({ kind: 'analysis', day, range, from, to, blockTime: null, result, createdAt: Date.now() });
     return { id: ref.id, result };
+  });
+});
+
+type StoredMessage = TalkMessage & { steps?: string[]; at: number };
+
+/**
+ * `write about this` on an analysis: one chat per analysis, stored in
+ * users/{uid}/aiChats/{analysisId}. Only on the day of the analysis: insight
+ * resets each day, older talks stay as read-only history.
+ */
+export const talk = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
+  const uid = guard(req);
+  const data = (req.data ?? {}) as { analysisId?: unknown; day?: unknown; text?: unknown; lang?: unknown };
+  const analysisId = typeof data.analysisId === 'string' && /^[A-Za-z0-9]{1,40}$/.test(data.analysisId) ? data.analysisId : null;
+  const text = typeof data.text === 'string' ? data.text.trim() : '';
+  if (!analysisId || !text || text.length > TALK_MAX_CHARS) throw new HttpsError('invalid-argument', 'Bad message');
+  const lang = parseLang(data.lang);
+
+  const user = getFirestore().collection('users').doc(uid);
+  const note = (await user.collection('aiNotes').doc(analysisId).get()).data() as
+    | { kind?: string; day?: string; from?: string; to?: string; result?: AnalysisResult }
+    | undefined;
+  if (!note || note.kind !== 'analysis' || !note.result || !note.from || !note.to) {
+    throw new HttpsError('not-found', 'No analysis');
+  }
+  if (note.day !== data.day) throw new HttpsError('failed-precondition', 'Talk is closed');
+
+  const chatRef = user.collection('aiChats').doc(analysisId);
+  const chat = ((await chatRef.get()).data() ?? {}) as { messages?: StoredMessage[]; done?: boolean };
+  // The first AI message is the analysis question, so the talk starts from it.
+  const messages: StoredMessage[] = chat.messages?.length
+    ? [...chat.messages]
+    : [{ role: 'ai', text: note.result.question, at: Date.now() }];
+  if (chat.done) throw new HttpsError('failed-precondition', 'Talk is closed');
+  messages.push({ role: 'me', text, at: Date.now() });
+
+  const [entriesSnap, lessonsSnap] = await Promise.all([
+    user.collection('entries').where('date', '>=', note.from).where('date', '<=', note.to).get(),
+    user.collection('lessons').where('archived', '==', false).get(),
+  ]);
+  const pages = formatPast(entriesSnap.docs.map((d) => d.data() as PastEntry), 'oldest');
+  const lessons = formatLessons(lessonsSnap.docs.map((d) => d.data() as LessonLite));
+  // The opening question counts as reply 1.
+  const isLast = messages.filter((m) => m.role === 'ai').length + 1 >= TALK_MAX_REPLIES;
+
+  return run('talk', async () => {
+    const raw = await generateText(
+      GEMINI_API_KEY.value(),
+      GEMINI_MODEL.value(),
+      buildTalkPrompt(analysisText(note.result!), pages, lessons, messages, lang),
+      { temperature: 0.6, timeoutMs: 45_000, jsonSchema: TALK_SCHEMA },
+    );
+    const answer = parseTalk(raw, isLast);
+    messages.push({ role: 'ai', text: answer.reply, ...(answer.steps.length ? { steps: answer.steps } : {}), at: Date.now() });
+    await chatRef.set({
+      day: note.day,
+      analysisId,
+      range: (note as { range?: string }).range ?? null,
+      from: note.from,
+      to: note.to,
+      topic: note.result!.question,
+      messages,
+      done: answer.done,
+      createdAt: (chat as { createdAt?: number }).createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    });
+    return answer;
   });
 });

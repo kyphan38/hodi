@@ -256,4 +256,16 @@ dòng an toàn.
   `used` (đã làm theo) hoặc `could have helped` (lúc có thể dùng mà chưa dùng), kèm ngày.
   Không chấm điểm, không trách. Chỉ ngày trong khoảng mới được ghi.
 
+**Reset theo ngày + lịch sử (2026-10-09):** trang `insight` chỉ hiện phân tích của **hôm nay**.
+Sang ngày mới thì trống, bấm `analyze` lại. Mục `history` ở cuối trang liệt kê các ngày cũ;
+mở `/insight/?d=YYYY-MM-DD` để xem lại (chỉ đọc, không trò chuyện tiếp).
+
+**`write about this` (function `talk`):** dưới câu hỏi của phân tích hôm nay. Mở một cuộc trò
+chuyện ngắn để gỡ rối, lưu ở `users/{uid}/aiChats/{analysisId}` (function ghi cả hai phía).
+- Logic 4 bước: hiểu (chuyện gì, cảm thấy gì, muốn gì) → gỡ (sự việc / cảm xúc / câu chuyện tự
+  kể; điều trong tầm tay) → lựa chọn (1-3 bước nhỏ có `keep`, ngay khi bạn xin ý) → đóng (1 câu
+  tóm tắt, `closed`).
+- Mỗi câu trả lời 1-3 câu, tối đa 1 câu hỏi. Tối đa 12 lượt AI; từ lượt 5 chuyển sang lựa chọn.
+- Chỉ trò chuyện được trong ngày của phân tích. Câu trả lời của bạn không vào nhật ký.
+
 **Để sau:** 1 năm (tóm tắt từng tháng trước rồi phân tích 12 bản tóm tắt); tự chọn ngày.
