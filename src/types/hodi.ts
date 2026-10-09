@@ -46,8 +46,14 @@ export type NextTimeResult = {
   helpedBefore: { day: string; text: string }[];
 };
 
-/** users/{uid}/aiNotes/{id} - written by functions/ only, shown under its block. */
+export type LookBackResult = { patterns: { text: string; days: string[] }[]; question: string };
+
+/**
+ * users/{uid}/aiNotes/{id} - written by functions/ only, shown under its block.
+ * `day` is a review period id ('2026-W40', '2026-10') for lookBack.
+ */
 export type AiNote = { id: string; day: string; blockTime: string | null; createdAt: number } & (
   | { kind: 'reflect'; result: ReflectResult }
   | { kind: 'nextTime'; result: NextTimeResult }
+  | { kind: 'lookBack'; result: LookBackResult }
 );

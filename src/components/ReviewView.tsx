@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 
+import AiNoteView from '@/components/AiNoteView';
 import Editor from '@/components/Editor';
 import ReadText from '@/components/ReadText';
 import StatusDot from '@/components/StatusDot';
@@ -11,12 +12,15 @@ import TopBar from '@/components/TopBar';
 import { scrollToTop } from '@/components/TodayView';
 import { useUid } from '@/components/AuthGate';
 import { useJournal } from '@/contexts/JournalContext';
+import { useAiNotes } from '@/hooks/useAiNotes';
 import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
+import { lookBackPeriod } from '@/lib/ai';
 import { clockStore } from '@/lib/clock';
 import { countWords, dayOf, dayShort } from '@/lib/day';
 import { firstLine, hasWords } from '@/lib/journal';
 import { reviewKey } from '@/lib/page-data';
+import { aiStore } from '@/lib/prefs';
 import { periodDays, reviewInvites, reviewKind, reviewTitle, type ReviewKind } from '@/lib/review';
 
 const PLACEHOLDER: Record<ReviewKind, string> = {
@@ -72,6 +76,7 @@ function ReviewPage({ period, kind }: { period: string; kind: ReviewKind }) {
         }
       />
       <PeriodPages period={period} />
+      <LookBack uid={uid} period={period} />
       <div className="mt-12">
         <Editor
           value={page.text}
@@ -83,6 +88,50 @@ function ReviewPage({ period, kind }: { period: string; kind: ReviewKind }) {
       </div>
       <StatusDot status={page.status} words={countWords(page.text)} flash={flash} />
     </main>
+  );
+}
+
+/** AI "look back": the newest note for this period, and a link to ask again. */
+function LookBack({ uid, period }: { uid: string; period: string }) {
+  const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
+  const { entries } = useJournal();
+  const notes = useAiNotes(uid, period, aiOn);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const hasPages = useMemo(() => {
+    const days = new Set(periodDays(period));
+    return entries.some((e) => days.has(e.date) && hasWords(e));
+  }, [entries, period]);
+
+  if (!aiOn || !hasPages) return null;
+  const latest = notes.filter((n) => n.kind === 'lookBack').at(-1);
+  const ask = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await lookBackPeriod(period);
+    } catch (err) {
+      console.warn('[ai] look back failed', err);
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const link = 'py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink';
+  return (
+    <div className="mt-8">
+      {latest && <AiNoteView uid={uid} note={latest} flush />}
+      {busy ? (
+        <span className="py-1 font-mono text-[11px] text-faint">…</span>
+      ) : (
+        <p className="flex gap-2">
+          <button type="button" onClick={ask} className={link}>
+            {latest ? 'look again' : 'look back'}
+          </button>
+          {failed && <span className="py-1 font-mono text-[11px] text-faint">failed</span>}
+        </p>
+      )}
+    </div>
   );
 }
 

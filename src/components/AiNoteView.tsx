@@ -9,16 +9,20 @@ import type { AiNote } from '@/types/hodi';
 
 const label = 'font-mono text-[11px] tracking-[0.04em] text-faint';
 
+const TITLE: Record<AiNote['kind'], string> = { reflect: 'reflect', nextTime: 'next time', lookBack: 'look back' };
+
 /** One AI note under its block: faint, indented, tap the label to fold. */
-export default function AiNoteView({ uid, note }: { uid: string; note: AiNote }) {
+export default function AiNoteView({ uid, note, flush }: { uid: string; note: AiNote; flush?: boolean }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="ml-15 mt-1 mb-3 border-l border-line pl-4 text-[14px] leading-relaxed">
+    <div className={`${flush ? '' : 'ml-15'} mt-1 mb-3 border-l border-line pl-4 text-[14px] leading-relaxed`}>
       <button type="button" onClick={() => setOpen((o) => !o)} className={`${label} py-1 hover:text-ink`}>
-        {note.kind === 'reflect' ? 'reflect' : 'next time'}
+        {TITLE[note.kind]}
         {open ? '' : ' ·'}
       </button>
-      {open && (note.kind === 'reflect' ? <Reflect uid={uid} note={note} /> : <NextTime uid={uid} note={note} />)}
+      {open && note.kind === 'reflect' && <Reflect uid={uid} note={note} />}
+      {open && note.kind === 'nextTime' && <NextTime uid={uid} note={note} />}
+      {open && note.kind === 'lookBack' && <LookBack note={note} />}
     </div>
   );
 }
@@ -65,6 +69,23 @@ function NextTime({ uid, note }: { uid: string; note: Extract<AiNote, { kind: 'n
           </ul>
         </Section>
       )}
+    </>
+  );
+}
+
+function LookBack({ note }: { note: Extract<AiNote, { kind: 'lookBack' }> }) {
+  const r = note.result;
+  return (
+    <>
+      <ul className="space-y-2">
+        {r.patterns.map((p) => (
+          <li key={p.text}>
+            <p className="text-muted">{p.text}</p>
+            {p.days.length > 0 && <p className={label}>{p.days.map(dayTiny).join(' · ')}</p>}
+          </li>
+        ))}
+      </ul>
+      {r.question && <p className="mt-2 text-faint">{r.question}</p>}
     </>
   );
 }

@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1 + A2 xong và đã deploy (2026-10-09).** Tiếp theo: A3 (`look back`).
+Ngày viết: 2026-10-09. Trạng thái: **A1-A3 xong và đã deploy (2026-10-09).** Tiếp theo: A4 (`deeper` + chọn câu hỏi thông minh).
 
 ## Mục tiêu
 
@@ -181,7 +181,7 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 | A0 | Chủ app: Blaze, budget, secret, deploy | Settings → `check` ra câu chào |
 | A1 ✅ | Nền móng: thư mục `functions/`, callable `ping` + kiểm email, Gemini key, rules mới, hàng `AI` + `AI language` trong Settings, `aiNotes`, kiểm từ khoá an toàn trên máy, cập nhật ROADMAP | Test rules; AI off thì không thấy nút nào |
 | A2 ✅ | `reflect` + `next time` + `keep` + trang `/lessons` + "what helped before" (60 ngày) | Viết 1 trải nghiệm tệ → nhận 1-3 bước, giữ được bài học, lần sau được nhắc lại |
-| A3 | `look back` cho review tuần/tháng | Mở review tuần → 2-3 điều lặp lại có trích ngày |
+| A3 ✅ | `look back` cho review tuần/tháng | Mở review tuần → 2-3 điều lặp lại có trích ngày |
 | A4 | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
 | A5 | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
 | A6 | `story` (CBT) + On this day có ý nghĩa | Viết "I always fail" → nhận câu hỏi tìm bằng chứng ngược lại |

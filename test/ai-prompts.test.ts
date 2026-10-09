@@ -2,11 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { CONTEXT_MAX_CHARS, formatLessons, formatPast } from '../functions/src/context.ts';
-import { addDaysId } from '../functions/src/dates.ts';
+import { addDaysId, periodRange } from '../functions/src/dates.ts';
+import { periodDays } from '@/lib/review';
 import {
+  buildLookBackPrompt,
   buildNextTimePrompt,
   buildReflectPrompt,
   checkBlock,
+  parseLookBack,
   parseNextTime,
   parseReflect,
 } from '../functions/src/prompts.ts';
@@ -75,4 +78,46 @@ test('checkBlock refuses bad input', () => {
   assert.throws(() => checkBlock({ ...block, body: '  ' }));
   assert.throws(() => checkBlock({ ...block, body: 'x'.repeat(9000) }));
   assert.equal(checkBlock({ ...block, time: 'soon' }).time, null);
+});
+
+test('formatPast can put the oldest page first', () => {
+  const out = formatPast(
+    [
+      { date: '2026-10-08', text: 'new' },
+      { date: '2026-10-01', text: 'old' },
+    ],
+    'oldest',
+  );
+  assert.equal(out, '### 2026-10-01\nold\n\n### 2026-10-08\nnew');
+});
+
+test('periodRange matches the app review periods', () => {
+  for (const p of ['2026-W01', '2026-W40', '2026-W53', '2020-W53', '2026-02', '2024-02', '2026-12']) {
+    const days = periodDays(p);
+    assert.deepEqual(periodRange(p), [days[0], days[days.length - 1]], p);
+  }
+  assert.equal(periodRange('2026-13'), null);
+  assert.equal(periodRange('2026-W00'), null);
+  assert.equal(periodRange('soon'), null);
+});
+
+test('parseLookBack keeps real days only and needs a pattern', () => {
+  const r = parseLookBack(
+    JSON.stringify({
+      patterns: [
+        { text: 'Tired after meetings.', days: ['2026-10-07', '2026-10-05', '2026-10-05', '1999-01-01'] },
+        { text: '', days: [] },
+      ],
+      question: 'What would make next week lighter?',
+    }),
+    new Set(['2026-10-05', '2026-10-07']),
+  );
+  assert.deepEqual(r.patterns, [{ text: 'Tired after meetings.', days: ['2026-10-05', '2026-10-07'] }]);
+  assert.throws(() => parseLookBack(JSON.stringify({ patterns: [], question: 'q' }), new Set()));
+});
+
+test('look back prompt names the period and the language', () => {
+  const p = buildLookBackPrompt('the month 2026-10', '### 2026-10-01\nhi', '', 'vi');
+  assert.match(p, /the month 2026-10/);
+  assert.match(p, /Vietnamese/);
 });

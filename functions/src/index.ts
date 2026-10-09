@@ -15,14 +15,17 @@ import { defineSecret, defineString } from 'firebase-functions/params';
 
 import { isAllowed } from './access.ts';
 import { CONTEXT_DAYS, formatLessons, formatPast, type LessonLite, type PastEntry } from './context.ts';
-import { addDaysId } from './dates.ts';
+import { addDaysId, periodRange } from './dates.ts';
 import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
 import {
+  buildLookBackPrompt,
   buildNextTimePrompt,
   buildReflectPrompt,
   checkBlock,
+  LOOK_BACK_SCHEMA,
   NEXT_TIME_SCHEMA,
+  parseLookBack,
   parseNextTime,
   parseReflect,
   REFLECT_SCHEMA,
@@ -81,14 +84,15 @@ async function loadContext(uid: string, day: string): Promise<Context> {
   return { past: formatPast(entries), lessons: formatLessons(lessons), knownDays };
 }
 
-type Kind = 'reflect' | 'nextTime';
+type Kind = 'reflect' | 'nextTime' | 'lookBack';
 
-async function saveNote(uid: string, b: BlockInput, kind: Kind, result: object): Promise<string> {
+/** `day` is a day id, or a review period id for lookBack. */
+async function saveNote(uid: string, day: string, blockTime: string | null, kind: Kind, result: object) {
   const ref = await getFirestore()
     .collection('users')
     .doc(uid)
     .collection('aiNotes')
-    .add({ day: b.day, blockTime: b.time, kind, result, createdAt: Date.now() });
+    .add({ day, blockTime, kind, result, createdAt: Date.now() });
   return ref.id;
 }
 
@@ -124,7 +128,7 @@ export const reflect = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 },
       { temperature: 0.6, timeoutMs: 45_000, jsonSchema: REFLECT_SCHEMA },
     );
     const result = parseReflect(raw);
-    const id = await saveNote(uid, block, 'reflect', result);
+    const id = await saveNote(uid, block.day, block.time, 'reflect', result);
     return { id, result };
   });
 });
@@ -142,7 +146,39 @@ export const nextTime = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }
       { temperature: 0.5, timeoutMs: 45_000, jsonSchema: NEXT_TIME_SCHEMA },
     );
     const result = parseNextTime(raw, ctx.knownDays);
-    const id = await saveNote(uid, block, 'nextTime', result);
+    const id = await saveNote(uid, block.day, block.time, 'nextTime', result);
+    return { id, result };
+  });
+});
+
+/** Weekly / monthly review: 2-3 things that repeat, with their days, and one question. */
+export const lookBack = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 90 }, async (req) => {
+  const uid = guard(req);
+  const data = (req.data ?? {}) as { period?: unknown; lang?: unknown };
+  const period = typeof data.period === 'string' ? data.period : '';
+  const range = periodRange(period);
+  if (!range) throw new HttpsError('invalid-argument', 'Bad period');
+  const lang = parseLang(data.lang);
+
+  const user = getFirestore().collection('users').doc(uid);
+  const [entriesSnap, lessonsSnap] = await Promise.all([
+    user.collection('entries').where('date', '>=', range[0]).where('date', '<=', range[1]).get(),
+    user.collection('lessons').where('archived', '==', false).get(),
+  ]);
+  const entries = entriesSnap.docs.map((d) => d.data() as PastEntry).filter((e) => e.text.trim());
+  if (entries.length === 0) throw new HttpsError('failed-precondition', 'No pages');
+
+  return run('lookBack', async () => {
+    const pages = formatPast(entries, 'oldest');
+    const label = period.includes('W') ? `the week ${range[0]} to ${range[1]}` : `the month ${period}`;
+    const raw = await generateText(
+      GEMINI_API_KEY.value(),
+      GEMINI_MODEL.value(),
+      buildLookBackPrompt(label, pages, formatLessons(lessonsSnap.docs.map((d) => d.data() as LessonLite)), lang),
+      { temperature: 0.4, timeoutMs: 75_000, jsonSchema: LOOK_BACK_SCHEMA },
+    );
+    const result = parseLookBack(raw, new Set(entries.map((e) => e.date)));
+    const id = await saveNote(uid, period, null, 'lookBack', result);
     return { id, result };
   });
 });
