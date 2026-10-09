@@ -69,6 +69,8 @@ test('analyze prompt has the range, the pages, older moments and the language', 
   assert.match(p, /Related moments from older pages:\n### 2026-09-01/);
   assert.match(p, /Vietnamese/);
   assert.match(buildAnalyzePrompt('the day 2026-10-09', 'x', '', '', 'en'), /older pages: none/);
+  assert.match(p, /NOT already in "gives" or "takes"/);
+  assert.match(p, /The first step is about the thing that took the most energy/);
 });
 
 test('parseAnalysis keeps real days, drops guesses, caps lists', () => {
