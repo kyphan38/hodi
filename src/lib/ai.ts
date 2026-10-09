@@ -11,8 +11,8 @@ import { getFunctionsClient } from '@/lib/firebase-client';
 import { aiLangStore } from '@/lib/prefs';
 import type { Range } from '@/types/hodi';
 
-async function call<Req extends object, Res>(name: string, data: Req): Promise<Res> {
-  const fn = httpsCallable<Req & { lang: string }, Res>(getFunctionsClient(), name, { timeout: 120_000 });
+async function call<Req extends object, Res>(name: string, data: Req, timeout = 120_000): Promise<Res> {
+  const fn = httpsCallable<Req & { lang: string }, Res>(getFunctionsClient(), name, { timeout });
   const res = await fn({ ...data, lang: aiLangStore.get() });
   return res.data;
 }
@@ -30,7 +30,8 @@ export function dailyQuestion(
 
 /** The function also saves the analysis; the page shows it from its listener. */
 export function analyzeRange(day: string, range: Range): Promise<{ id: string }> {
-  return call('analyze', { day, range });
+  // A first long range summarizes every month, which can take a few minutes.
+  return call('analyze', { day, range }, 300_000);
 }
 
 export type MeaningHit = { day: string; time: string | null; question: string | null; text: string; score: number };
