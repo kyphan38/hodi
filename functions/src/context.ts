@@ -25,6 +25,7 @@ export function formatPast(entries: PastEntry[], order: 'newest' | 'oldest' = 'n
   return parts.join('\n\n');
 }
 
+/** Numbered from 0, so AI can point at a lesson by its number. */
 export function formatLessons(lessons: LessonLite[]): string {
-  return lessons.map((l) => `- (${l.sourceDay}) ${l.text}${l.situation ? ` [when: ${l.situation}]` : ''}`).join('\n');
+  return lessons.map((l, i) => `${i}. (${l.sourceDay}) ${l.text}${l.situation ? ` [when: ${l.situation}]` : ''}`).join('\n');
 }

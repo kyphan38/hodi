@@ -33,6 +33,9 @@ function clean(s: unknown, max = 600): string {
 export type Dated = { text: string; days: string[] };
 export type Story = { story: string; against: Dated[]; truer: string };
 
+/** A kept lesson seen in the range: used, or a moment where it could have helped. */
+export type LessonInAction = { lesson: string; used: boolean; text: string; days: string[] };
+
 export type AnalysisResult = {
   overview: string;
   gives: Dated[];
@@ -42,6 +45,7 @@ export type AnalysisResult = {
   story: Story | null;
   steps: string[];
   helpedBefore: Dated[];
+  lessonsInAction: LessonInAction[];
   question: string;
 };
 
@@ -74,6 +78,11 @@ Return JSON:
   The first step is about the thing that took the most energy or came back the most.
   Each one sentence, doable within a day or a week.
 - "helpedBefore": up to 2 things from older pages or kept lessons that helped in similar moments. [] if none.
+- "lessonsInAction": check each kept lesson against the pages in the range. Up to 3 items, each
+  {"lesson": the lesson's number, "used": true if they did it (even partly) or false if a moment
+  came where it could have helped and they did not use it, "text": one short sentence on that moment,
+  "days": the range days where it shows}. Only clear cases from the range pages. No blame when
+  "used" is false: just point at the moment. [] if no lesson shows up.
 - "question": one open question to write about next.
 
 ${replyLanguageRule(lang)}
@@ -101,9 +110,28 @@ export const ANALYZE_SCHEMA = {
     },
     steps: strList,
     helpedBefore: datedList,
+    lessonsInAction: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { lesson: { type: 'integer' }, used: { type: 'boolean' }, text: str, days: strList },
+        required: ['lesson', 'used', 'text', 'days'],
+      },
+    },
     question: str,
   },
-  required: ['overview', 'gives', 'takes', 'patterns', 'wins', 'story', 'steps', 'helpedBefore', 'question'],
+  required: [
+    'overview',
+    'gives',
+    'takes',
+    'patterns',
+    'wins',
+    'story',
+    'steps',
+    'helpedBefore',
+    'lessonsInAction',
+    'question',
+  ],
 };
 
 const MAX_DAYS = 4;
@@ -124,7 +152,31 @@ function cleanDated(raw: unknown, knownDays: ReadonlySet<string>, max = 3, needD
     .slice(0, max);
 }
 
-export function parseAnalysis(raw: string, knownDays: ReadonlySet<string>): AnalysisResult {
+/**
+ * knownDays: every day sent (range, older blocks, lessons). lessons: the kept
+ * lesson texts in the order sent. rangeDays: days inside the range, the only
+ * ones a lesson-in-action may point at.
+ */
+function cleanLessonsInAction(raw: unknown, lessons: readonly string[], rangeDays: ReadonlySet<string>): LessonInAction[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LessonInAction[] = [];
+  for (const item of raw) {
+    const x = (item ?? {}) as Record<string, unknown>;
+    const n = x.lesson;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n >= lessons.length) continue;
+    const [dated] = cleanDated([{ text: x.text, days: x.days }], rangeDays, 1, true);
+    if (!dated || typeof x.used !== 'boolean') continue;
+    out.push({ lesson: lessons[n], used: x.used, ...dated });
+  }
+  return out.slice(0, 3);
+}
+
+export function parseAnalysis(
+  raw: string,
+  knownDays: ReadonlySet<string>,
+  lessons: readonly string[] = [],
+  rangeDays: ReadonlySet<string> = knownDays,
+): AnalysisResult {
   const j = JSON.parse(raw) as Record<string, unknown>;
   const overview = clean(j.overview, 800);
   if (!overview) throw new Error('analyze: empty overview');
@@ -142,6 +194,7 @@ export function parseAnalysis(raw: string, knownDays: ReadonlySet<string>): Anal
     steps,
     // A "helped before" with no real day is a guess: dropped.
     helpedBefore: cleanDated(j.helpedBefore, knownDays, 2, true),
+    lessonsInAction: cleanLessonsInAction(j.lessonsInAction, lessons, rangeDays),
     question: clean(j.question, 300),
   };
 }

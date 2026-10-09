@@ -174,6 +174,20 @@ function AnalysisView({ uid, a }: { uid: string; a: Analysis }) {
         </Section>
       )}
       <DatedSection title="helped before" items={r.helpedBefore} />
+      {r.lessonsInAction && r.lessonsInAction.length > 0 && (
+        <Section title="lessons in action">
+          <ul className="space-y-3">
+            {r.lessonsInAction.map((x) => (
+              <li key={x.lesson + x.text}>
+                <p className={label}>
+                  {x.used ? 'used' : 'could have helped'} · {x.lesson}
+                </p>
+                <DatedList items={[x]} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
       {r.question && <p className="mt-5 text-faint">{r.question}</p>}
     </article>
   );
