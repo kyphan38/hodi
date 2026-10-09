@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1-A3 xong và đã deploy (2026-10-09).** Tiếp theo: A4 (`deeper` + chọn câu hỏi thông minh).
+Ngày viết: 2026-10-09. Trạng thái: **A1-A4 xong và đã deploy (2026-10-09).** Tiếp theo: A5 (khép vòng lặp #8, gắn vào function `daily`).
 
 ## Mục tiêu
 
@@ -174,6 +174,14 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 - Client gửi chính khối đó; function tự đọc 60 ngày trước + bài học (không archived).
 - Mỗi lần gọi mất khoảng 10-15 giây (Gemini đọc cả 60 ngày).
 
+## Ghi chú sau A4
+
+- `deeper`: hiện sau `done` (cạnh `another · free write`). Câu hỏi AI trở thành câu hỏi của
+  khối tiếp theo, nên nằm trong chữ nhật ký như mọi câu hỏi (`› ...`). Không lưu aiNotes.
+- Chọn câu hỏi: function `daily` chạy 1 lần/ngày (kết quả lưu `meta/ai.questionFor`), chọn
+  từ danh sách `QUESTIONS` dựa trên 7 ngày trước. `another` quay về thứ tự cũ.
+  Câu hỏi vẫn là tiếng Anh (danh sách có sẵn).
+
 ## Các phase
 
 | Phase | Nội dung | Kiểm chứng |
@@ -182,7 +190,7 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 | A1 ✅ | Nền móng: thư mục `functions/`, callable `ping` + kiểm email, Gemini key, rules mới, hàng `AI` + `AI language` trong Settings, `aiNotes`, kiểm từ khoá an toàn trên máy, cập nhật ROADMAP | Test rules; AI off thì không thấy nút nào |
 | A2 ✅ | `reflect` + `next time` + `keep` + trang `/lessons` + "what helped before" (60 ngày) | Viết 1 trải nghiệm tệ → nhận 1-3 bước, giữ được bài học, lần sau được nhắc lại |
 | A3 ✅ | `look back` cho review tuần/tháng | Mở review tuần → 2-3 điều lặp lại có trích ngày |
-| A4 | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
+| A4 ✅ | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
 | A5 | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
 | A6 | `story` (CBT) + On this day có ý nghĩa | Viết "I always fail" → nhận câu hỏi tìm bằng chứng ngược lại |
 | A7 | Tìm theo ý nghĩa: embeddings cho mỗi khối, lưu Firestore vector; `next time` dùng nó thay 60 ngày | Gõ "lo về công việc" ở Days → ra đúng ngày dù không có chữ "công việc" |

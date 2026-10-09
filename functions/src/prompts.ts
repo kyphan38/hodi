@@ -209,3 +209,72 @@ export function parseLookBack(raw: string, knownDays: ReadonlySet<string>): Look
   if (patterns.length === 0) throw new Error('lookBack: no patterns');
   return { patterns, question: clean(j.question, 300) };
 }
+
+// ---- Deeper: one follow-up question after "done" ----
+
+export function buildDeeperPrompt(b: BlockInput, lang: Lang): string {
+  return `${VOICE}
+
+Task: DEEPER. They just finished writing the part below. Ask ONE follow-up question that helps
+them go one step deeper: the feeling under the facts, the reason, or what they want.
+- One sentence, under 20 words. Open question, not yes/no. No advice, no comment before it.
+- Build on their own words, so it could not fit any other page.
+
+Return JSON: {"question": "..."}
+
+${replyLanguageRule(lang)}
+
+The part they just wrote:
+${blockText(b)}`;
+}
+
+export const DEEPER_SCHEMA = {
+  type: 'object',
+  properties: { question: str },
+  required: ['question'],
+};
+
+export function parseDeeper(raw: string): string {
+  const q = clean((JSON.parse(raw) as Record<string, unknown>).question, 300).replace(/\s+/g, ' ');
+  if (!q) throw new Error('deeper: empty question');
+  return q;
+}
+
+// ---- Daily question pick ----
+
+export function buildPickPrompt(recent: string, candidates: readonly string[]): string {
+  return `${VOICE}
+
+Task: PICK TODAY'S QUESTION. Read their last few days. Choose the ONE question from the list
+that fits best right now: something they keep circling, avoiding, or that would help them most.
+Prefer a gentle question if the days look heavy. Do not pick a question they answered in these days.
+
+Return JSON: {"index": number} - the number from the list.
+
+Questions:
+${candidates.map((q, i) => `${i}. ${q}`).join('\n')}
+
+Their last days (newest first):
+${recent}`;
+}
+
+export const PICK_SCHEMA = {
+  type: 'object',
+  properties: { index: { type: 'integer' } },
+  required: ['index'],
+};
+
+export function parsePick(raw: string, candidates: readonly string[]): string {
+  const i = (JSON.parse(raw) as Record<string, unknown>).index;
+  if (typeof i !== 'number' || !Number.isInteger(i) || i < 0 || i >= candidates.length) {
+    throw new Error('pick: bad index');
+  }
+  return candidates[i];
+}
+
+export function checkCandidates(raw: unknown): string[] {
+  if (!Array.isArray(raw)) throw new Error('bad candidates');
+  const list = raw.filter((q): q is string => typeof q === 'string' && q.trim() !== '' && q.length <= 300);
+  if (list.length === 0 || list.length > 200) throw new Error('bad candidates');
+  return list;
+}
