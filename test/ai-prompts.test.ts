@@ -229,6 +229,7 @@ const analysis = {
   story: null,
   steps: ['Talk in private.'],
   helpedBefore: [],
+  lessonsInAction: [],
   question: 'What would help you stay calm?',
 };
 
