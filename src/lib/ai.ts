@@ -19,3 +19,14 @@ async function call<Req extends object, Res>(name: string, data: Req): Promise<R
 export function pingAi(): Promise<{ ok: boolean; text: string }> {
   return call('ping', {});
 }
+
+export type AiBlock = { day: string; time: string | null; question: string | null; body: string };
+
+/** The function also saves the note; the page shows it from its aiNotes listener. */
+export function reflectBlock(block: AiBlock): Promise<{ id: string }> {
+  return call('reflect', { block });
+}
+
+export function nextTimeBlock(block: AiBlock): Promise<{ id: string }> {
+  return call('nextTime', { block });
+}

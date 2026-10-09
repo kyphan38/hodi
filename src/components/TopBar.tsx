@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { Fragment, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 
 import { typingStore } from '@/lib/activity';
+import { aiStore } from '@/lib/prefs';
 
-export type Place = 'today' | 'days' | 'settings';
+export type Place = 'today' | 'days' | 'lessons' | 'settings';
 
-const HREF: Record<Place, string> = { today: '/', days: '/days/', settings: '/settings/' };
+const HREF: Record<Place, string> = { today: '/', days: '/days/', lessons: '/lessons/', settings: '/settings/' };
 
 /**
  * Top bar instead of a tab bar: label on the left, a few small words on the right.
@@ -15,7 +16,10 @@ const HREF: Record<Place, string> = { today: '/', days: '/days/', settings: '/se
  */
 export default function TopBar({ current, left }: { current: Place | null; left?: ReactNode }) {
   const typing = useSyncExternalStore(typingStore.subscribe, typingStore.get, typingStore.getServer);
-  const places: Place[] = current === 'today' ? ['days', 'settings'] : ['today', 'days', 'settings'];
+  const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
+  // Lessons only exist with AI; keep the link while on that page.
+  const all: Place[] = aiOn || current === 'lessons' ? ['today', 'days', 'lessons', 'settings'] : ['today', 'days', 'settings'];
+  const places = current === 'today' ? all.filter((p) => p !== 'today') : all;
 
   useEffect(() => {
     const wake = () => typingStore.set(false);

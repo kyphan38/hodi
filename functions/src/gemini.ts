@@ -8,7 +8,7 @@ export async function generateText(
   apiKey: string,
   model: string,
   prompt: string,
-  opts: { temperature?: number; timeoutMs?: number } = {},
+  opts: { temperature?: number; timeoutMs?: number; jsonSchema?: unknown } = {},
 ): Promise<string> {
   if (!client || clientKey !== apiKey) {
     client = new GoogleGenAI({ apiKey });
@@ -19,6 +19,7 @@ export async function generateText(
     contents: prompt,
     config: {
       temperature: opts.temperature ?? 0.6,
+      ...(opts.jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: opts.jsonSchema } : {}),
       httpOptions: { timeout: opts.timeoutMs ?? 30_000 },
     },
   });

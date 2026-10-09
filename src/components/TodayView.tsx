@@ -12,19 +12,22 @@ import {
   type RefObject,
 } from 'react';
 
+import AiNoteView from '@/components/AiNoteView';
 import GrowText from '@/components/GrowText';
 import OnThisDay from '@/components/OnThisDay';
 import { ReviewInvites } from '@/components/ReviewView';
 import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
+import { useAiNotes } from '@/hooks/useAiNotes';
 import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { lastInputAt } from '@/lib/activity';
+import { nextTimeBlock, reflectBlock } from '@/lib/ai';
 import { answered, parseBlocks, serializeBlocks, type Block } from '@/lib/blocks';
 import { countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
-import { aiLangStore, questionsStore } from '@/lib/prefs';
+import { aiLangStore, aiStore, questionsStore } from '@/lib/prefs';
 import { nextQuestion } from '@/lib/questions';
 import { needsSupport, SUPPORT_LINE } from '@/lib/safety';
 
@@ -67,6 +70,7 @@ export default function TodayView() {
 function TodayPage({ uid, day }: { uid: string; day: string }) {
   const questionsOn =
     useSyncExternalStore(questionsStore.subscribe, questionsStore.get, questionsStore.getServer) === 'on';
+  const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
   const [skip, setSkip] = useState(0);
   const [freeWrite, setFreeWrite] = useState(false);
   // The open block. null = nothing written in the new block yet (showing the prompt question).
@@ -90,6 +94,29 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   const activeQuestion = composing ? (questionsOn && !freeWrite ? suggestion.question : null) : blocks[editing]?.question;
 
   const write = (next: Block[]) => page.setText(serializeBlocks(next));
+
+  const notes = useAiNotes(uid, day, aiOn);
+  const notesFor = (b: Block) => (b.time ? notes.filter((n) => n.blockTime === b.time) : []);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiFailed, setAiFailed] = useState(false);
+
+  /** Sends one block; the function saves the note and the listener shows it. */
+  const askAi = async (kind: 'reflect' | 'nextTime', i: number) => {
+    const b = blocks[i];
+    if (!b?.body.trim() || aiBusy) return;
+    page.flush();
+    setAiBusy(true);
+    setAiFailed(false);
+    try {
+      const send = kind === 'reflect' ? reflectBlock : nextTimeBlock;
+      await send({ day, time: b.time, question: b.question, body: b.body });
+    } catch (err) {
+      console.warn('[ai] call failed', err);
+      setAiFailed(true);
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   const onActiveChange = (value: string) => {
     if (composing) {
@@ -154,6 +181,28 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   }, [page.loaded]);
 
   const link = 'py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink';
+
+  const aiLinks = (i: number) =>
+    aiOn && blocks[i]?.body.trim() ? (
+      <p className="flex gap-2">
+        {aiBusy ? (
+          <span className="py-1 font-mono text-[11px] text-faint">…</span>
+        ) : (
+          <>
+            <button type="button" onClick={() => askAi('reflect', i)} className={link}>
+              reflect
+            </button>
+            <span className="py-1 text-[11px] text-faint">·</span>
+            <button type="button" onClick={() => askAi('nextTime', i)} className={link}>
+              next time
+            </button>
+            {aiFailed && <span className="py-1 font-mono text-[11px] text-faint">failed</span>}
+          </>
+        )}
+      </p>
+    ) : null;
+  const notesUnder = (b: Block | undefined) =>
+    b ? notesFor(b).map((n) => <AiNoteView key={n.id} uid={uid} note={n} />) : null;
   const activeBody = composing ? '' : (blocks[editing]?.body ?? '');
 
   return (
@@ -181,7 +230,9 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                     onChange={onActiveChange}
                     onKeyDown={onKeyDown}
                     onDone={done}
+                    links={aiLinks(i)}
                   />
+                  {notesUnder(b)}
                 </li>
               );
             }
@@ -203,6 +254,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                     </span>
                   </span>
                 </button>
+                {notesUnder(b)}
               </li>
             );
           })}
@@ -240,9 +292,12 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                     )
                   )}
                 </p>
-              ) : null
+              ) : (
+                aiLinks(editing ?? -1)
+              )
             }
           />
+          {!composing && notesUnder(blocks[last])}
         </div>
       )}
 

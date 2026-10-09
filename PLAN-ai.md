@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1 code xong 2026-10-09** (nhánh `feat/ai-a1`, thử trên emulator). Còn: chủ app bật Blaze + set secret + deploy. Tiếp theo: A2.
+Ngày viết: 2026-10-09. Trạng thái: **A1 + A2 xong và đã deploy (2026-10-09).** Tiếp theo: A3 (`look back`).
 
 ## Mục tiêu
 
@@ -110,8 +110,9 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 
 ```ts
 // users/{uid}/aiNotes/{auto-id} - kết quả AI, KHÔNG trộn vào text của entry (bất biến 3)
+// result: JSON theo kind (ReflectResult, NextTimeResult... trong src/types/hodi.ts)
 { day: string; blockTime: string | null; kind: 'reflect' | 'nextTime' | 'deeper' | 'story' | 'lookBack' | 'onThisDay';
-  text: string; createdAt: number }
+  result: object; createdAt: number }
 
 // users/{uid}/lessons/{auto-id} - bài học bạn bấm `keep`
 { text: string; situation: string; sourceDay: string; archived: boolean;
@@ -166,13 +167,20 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 
 6. Mở app → Settings → `AI` = `on` → `check`. Thấy một câu chào là xong.
 
+## Ghi chú sau A2
+
+- Nút `reflect · next time` chỉ hiện ở trang **Today**, khi đang sửa một khối có chữ.
+  Ngày cũ (Day view) chưa có, để sau nếu cần.
+- Client gửi chính khối đó; function tự đọc 60 ngày trước + bài học (không archived).
+- Mỗi lần gọi mất khoảng 10-15 giây (Gemini đọc cả 60 ngày).
+
 ## Các phase
 
 | Phase | Nội dung | Kiểm chứng |
 |---|---|---|
 | A0 | Chủ app: Blaze, budget, secret, deploy | Settings → `check` ra câu chào |
 | A1 ✅ | Nền móng: thư mục `functions/`, callable `ping` + kiểm email, Gemini key, rules mới, hàng `AI` + `AI language` trong Settings, `aiNotes`, kiểm từ khoá an toàn trên máy, cập nhật ROADMAP | Test rules; AI off thì không thấy nút nào |
-| A2 | `reflect` + `next time` + `keep` + trang `/lessons` + "what helped before" (60 ngày) | Viết 1 trải nghiệm tệ → nhận 1-3 bước, giữ được bài học, lần sau được nhắc lại |
+| A2 ✅ | `reflect` + `next time` + `keep` + trang `/lessons` + "what helped before" (60 ngày) | Viết 1 trải nghiệm tệ → nhận 1-3 bước, giữ được bài học, lần sau được nhắc lại |
 | A3 | `look back` cho review tuần/tháng | Mở review tuần → 2-3 điều lặp lại có trích ngày |
 | A4 | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
 | A5 | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
