@@ -13,12 +13,14 @@ import { collection, onSnapshot } from 'firebase/firestore';
 
 import { useUid } from '@/components/AuthGate';
 import { getDb } from '@/lib/firebase-client';
-import type { Entry, Review } from '@/types/hodi';
+import type { Entry, Lesson, Review } from '@/types/hodi';
 
 type Journal = {
   /** Newest first. */
   entries: Entry[];
   reviews: Review[];
+  /** Newest first, archived included (views filter). */
+  lessons: Lesson[];
   /** Both listeners have their first snapshot. */
   loaded: boolean;
 };
@@ -29,6 +31,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const uid = useUid();
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
 
   useEffect(() => {
     const db = getDb();
@@ -43,15 +46,27 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       (snap) => setReviews(snap.docs.map((d) => d.data() as Review)),
       onError,
     );
+    const unsubLessons = onSnapshot(
+      collection(db, 'users', uid, 'lessons'),
+      (snap) =>
+        setLessons(
+          snap.docs
+            .map((d) => ({ ...(d.data() as Omit<Lesson, 'id'>), id: d.id }))
+            .sort((a, b) => b.createdAt - a.createdAt),
+        ),
+      onError,
+    );
     return () => {
       unsubEntries();
       unsubReviews();
+      unsubLessons();
     };
   }, [uid]);
 
   const value: Journal = {
     entries: entries ?? [],
     reviews: reviews ?? [],
+    lessons,
     loaded: entries !== null && reviews !== null,
   };
   return <JournalContext.Provider value={value}>{children}</JournalContext.Provider>;

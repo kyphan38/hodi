@@ -1,0 +1,118 @@
+'use client';
+
+import { useState, type ReactNode } from 'react';
+
+import { useJournal } from '@/contexts/JournalContext';
+import { dayTiny } from '@/lib/day';
+import { keepLesson } from '@/lib/lessons';
+import type { AiNote } from '@/types/hodi';
+
+const label = 'font-mono text-[11px] tracking-[0.04em] text-faint';
+
+/** One AI note under its block: faint, indented, tap the label to fold. */
+export default function AiNoteView({ uid, note }: { uid: string; note: AiNote }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="ml-15 mt-1 mb-3 border-l border-line pl-4 text-[14px] leading-relaxed">
+      <button type="button" onClick={() => setOpen((o) => !o)} className={`${label} py-1 hover:text-ink`}>
+        {note.kind === 'reflect' ? 'reflect' : 'next time'}
+        {open ? '' : ' ·'}
+      </button>
+      {open && (note.kind === 'reflect' ? <Reflect uid={uid} note={note} /> : <NextTime uid={uid} note={note} />)}
+    </div>
+  );
+}
+
+function Reflect({ uid, note }: { uid: string; note: Extract<AiNote, { kind: 'reflect' }> }) {
+  const r = note.result;
+  return (
+    <>
+      <p className="text-muted">{r.mirror}</p>
+      {r.question && <p className="mt-1 text-faint">{r.question}</p>}
+      {r.steps.length > 0 && (
+        <Section title="try">
+          <Steps uid={uid} steps={r.steps} situation={r.mirror} day={note.day} />
+        </Section>
+      )}
+    </>
+  );
+}
+
+function NextTime({ uid, note }: { uid: string; note: Extract<AiNote, { kind: 'nextTime' }> }) {
+  const r = note.result;
+  return (
+    <>
+      <p className="text-muted">{r.happened}</p>
+      {r.didWell && (
+        <Section title="went well">
+          <p className="text-muted">{r.didWell}</p>
+        </Section>
+      )}
+      {r.steps.length > 0 && (
+        <Section title="try">
+          <Steps uid={uid} steps={r.steps} situation={r.happened} day={note.day} />
+        </Section>
+      )}
+      {r.helpedBefore.length > 0 && (
+        <Section title="helped before">
+          <ul className="space-y-1">
+            {r.helpedBefore.map((h) => (
+              <li key={h.day + h.text} className="flex gap-3">
+                <span className={`${label} w-12 shrink-0 pt-0.5`}>{dayTiny(h.day)}</span>
+                <span className="text-muted">{h.text}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="mt-2">
+      <p className={label}>{title}</p>
+      {children}
+    </div>
+  );
+}
+
+/** Each step can be kept as a lesson; a kept step shows "kept" instead. */
+function Steps({ uid, steps, situation, day }: { uid: string; steps: string[]; situation: string; day: string }) {
+  const { lessons } = useJournal();
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <ul className="space-y-1">
+      {steps.map((s) => {
+        const kept = lessons.some((l) => l.text === s && l.sourceDay === day);
+        return (
+          <li key={s} className="flex items-baseline justify-between gap-4">
+            <span className="text-muted">{s}</span>
+            {kept ? (
+              <span className={label}>kept</span>
+            ) : (
+              <button
+                type="button"
+                disabled={busy === s}
+                onClick={async () => {
+                  setBusy(s);
+                  try {
+                    await keepLesson(uid, { text: s, situation, sourceDay: day });
+                  } catch (err) {
+                    console.error('[lessons] keep failed', err);
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+                className={`${label} shrink-0 hover:text-ink disabled:opacity-40`}
+              >
+                keep
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

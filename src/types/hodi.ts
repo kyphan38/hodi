@@ -24,3 +24,30 @@ export type Review = {
 /** Save status, shown as a small dot.
  *  idle: nothing to save · local: saved on this device, not in the cloud · synced: in the cloud. */
 export type SaveStatus = 'idle' | 'local' | 'synced';
+
+/** users/{uid}/lessons/{id} - a "next time" step the user chose to keep. Archived, never deleted. */
+export type Lesson = {
+  id: string;
+  text: string;
+  /** One line on when it applies (the "what happened" of the source note). */
+  situation: string;
+  sourceDay: string;
+  archived: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ReflectResult = { mirror: string; question: string; steps: string[] };
+
+export type NextTimeResult = {
+  happened: string;
+  didWell: string | null;
+  steps: string[];
+  helpedBefore: { day: string; text: string }[];
+};
+
+/** users/{uid}/aiNotes/{id} - written by functions/ only, shown under its block. */
+export type AiNote = { id: string; day: string; blockTime: string | null; createdAt: number } & (
+  | { kind: 'reflect'; result: ReflectResult }
+  | { kind: 'nextTime'; result: NextTimeResult }
+);
