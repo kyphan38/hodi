@@ -20,6 +20,7 @@ import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
 import {
   buildDeeperPrompt,
+  buildIntentionsPrompt,
   buildLookBackPrompt,
   buildPickPrompt,
   buildNextTimePrompt,
@@ -27,9 +28,11 @@ import {
   checkBlock,
   checkCandidates,
   DEEPER_SCHEMA,
+  INTENTIONS_SCHEMA,
   LOOK_BACK_SCHEMA,
   NEXT_TIME_SCHEMA,
   parseDeeper,
+  parseIntentions,
   parseLookBack,
   parsePick,
   PICK_SCHEMA,
@@ -204,17 +207,71 @@ export const deeper = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 30 }, 
   });
 });
 
-/** Days of pages read for the daily pick. */
+/** Days of pages read for the daily pick and for finding promises. */
 const DAILY_DAYS = 7;
+/** A run that started this long ago is treated as dead and may be retried. */
+const CLAIM_MS = 90_000;
+
+type Meta = {
+  questionFor?: { day: string; text: string } | null;
+  followUpFor?: { day: string; text: string } | null;
+  /** Last page day already searched for promises. */
+  intentScanned?: string;
+};
+
+/** A failed part should not break the rest of `daily`. */
+async function softly<T>(name: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    logger.error(`${name} failed`, err instanceof Error ? err.message : String(err));
+    return fallback;
+  }
+}
+
+/** Saves new promises found in pages not searched yet (PLAN-ai #8). */
+async function scanIntentions(
+  user: FirebaseFirestore.DocumentReference,
+  pages: PastEntry[],
+  lang: Lang,
+): Promise<void> {
+  if (pages.length === 0) return;
+  const openSnap = await user.collection('intentions').where('status', '==', 'open').get();
+  const open = openSnap.docs.map((d) => String(d.data().text ?? ''));
+  const raw = await generateText(
+    GEMINI_API_KEY.value(),
+    GEMINI_MODEL.value(),
+    buildIntentionsPrompt(formatPast(pages), open, lang),
+    { temperature: 0.2, timeoutMs: 20_000, jsonSchema: INTENTIONS_SCHEMA },
+  );
+  const found = parseIntentions(raw, new Set(pages.map((p) => p.date)), addDaysId);
+  const batch = getFirestore().batch();
+  for (const it of found) {
+    batch.set(user.collection('intentions').doc(), { ...it, status: 'open', createdAt: Date.now() });
+  }
+  await batch.commit();
+}
+
+/** The oldest due promise, marked asked right away: each one is asked once only. */
+async function takeFollowUp(user: FirebaseFirestore.DocumentReference, day: string): Promise<string | null> {
+  const snap = await user.collection('intentions').where('status', '==', 'open').get();
+  const due = snap.docs
+    .filter((d) => String(d.data().askOn ?? '') <= day)
+    .sort((a, b) => String(a.data().askOn).localeCompare(String(b.data().askOn)));
+  if (due.length === 0) return null;
+  await due[0].ref.update({ status: 'asked', askedOn: day });
+  return String(due[0].data().question ?? '') || null;
+}
 
 /**
- * Called by Today on the first open of a day (AI on). Picks today's question
- * from the app's list using the last days, once a day: the answer is kept in
- * users/{uid}/meta/ai and read from there afterwards. PLAN-ai #8 hooks in here later.
+ * Called by Today on the first open of a day (AI on), once a day: the result
+ * is kept in users/{uid}/meta/ai and read from there afterwards.
+ * 1. Finds promises in pages not searched yet; 2. returns one that is due as
+ * `followUp` (asked once); 3. picks today's question from the app's list.
  */
-export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 30 }, async (req) => {
+export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
   const uid = guard(req);
-  const data = (req.data ?? {}) as { day?: unknown; candidates?: unknown };
+  const data = (req.data ?? {}) as { day?: unknown; candidates?: unknown; lang?: unknown };
   const day = typeof data.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.day) ? data.day : null;
   let candidates: string[];
   try {
@@ -223,30 +280,67 @@ export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 30 }, a
     throw new HttpsError('invalid-argument', 'Bad candidates');
   }
   if (!day) throw new HttpsError('invalid-argument', 'Bad day');
+  const lang = parseLang(data.lang);
 
-  const user = getFirestore().collection('users').doc(uid);
+  const db = getFirestore();
+  const user = db.collection('users').doc(uid);
   const metaRef = user.collection('meta').doc('ai');
-  const meta = (await metaRef.get()).data() as { questionFor?: { day: string; text: string } | null } | undefined;
-  if (meta?.questionFor?.day === day) return { question: meta.questionFor.text };
+
+  // Claim today's run in a transaction: two opens at once (two tabs) must not
+  // both scan, or the same promise is saved twice.
+  const claim = await db.runTransaction(async (tx) => {
+    const meta = ((await tx.get(metaRef)).data() ?? {}) as Meta & { claim?: { day: string; at: number } };
+    if (meta.questionFor?.day === day) return { kind: 'done' as const, meta };
+    if (meta.claim?.day === day && Date.now() - meta.claim.at < CLAIM_MS) return { kind: 'busy' as const, meta };
+    tx.set(metaRef, { claim: { day, at: Date.now() } }, { merge: true });
+    return { kind: 'run' as const, meta };
+  });
+  const meta = claim.meta;
+  if (claim.kind === 'busy') return { question: null, followUp: null, busy: true };
+  if (claim.kind === 'done') {
+    return {
+      question: meta.questionFor?.text || null,
+      followUp: meta.followUpFor?.day === day ? meta.followUpFor.text || null : null,
+    };
+  }
 
   const snap = await user
     .collection('entries')
     .where('date', '>=', addDaysId(day, -DAILY_DAYS))
     .where('date', '<', day)
     .get();
-  const recent = formatPast(snap.docs.map((d) => d.data() as PastEntry));
-  let question: string | null = null;
-  if (recent) {
-    question = await run('daily', async () => {
-      const raw = await generateText(GEMINI_API_KEY.value(), GEMINI_MODEL.value(), buildPickPrompt(recent, candidates), {
-        temperature: 0.3,
-        timeoutMs: 20_000,
-        jsonSchema: PICK_SCHEMA,
-      });
-      return parsePick(raw, candidates);
-    });
-  }
-  // Saved even when null, so a quiet week does not call again on every open.
-  await metaRef.set({ lastDailyRun: day, questionFor: question ? { day, text: question } : { day, text: '' } }, { merge: true });
-  return { question };
+  const pages = snap.docs.map((d) => d.data() as PastEntry).filter((e) => e.text.trim());
+  const unscanned = pages.filter((p) => !meta.intentScanned || p.date > meta.intentScanned);
+
+  // Pages count as searched only when the search worked; otherwise retry tomorrow.
+  const scanned = await softly('intentions', () => scanIntentions(user, unscanned, lang).then(() => true), false);
+  const followUp = await softly('followUp', () => takeFollowUp(user, day), null);
+
+  const recent = formatPast(pages);
+  const question = recent
+    ? await softly(
+        'pick',
+        async () => {
+          const raw = await generateText(GEMINI_API_KEY.value(), GEMINI_MODEL.value(), buildPickPrompt(recent, candidates), {
+            temperature: 0.3,
+            timeoutMs: 20_000,
+            jsonSchema: PICK_SCHEMA,
+          });
+          return parsePick(raw, candidates);
+        },
+        null,
+      )
+    : null;
+
+  // Saved even when empty, so a quiet week does not call again on every open.
+  await metaRef.set(
+    {
+      lastDailyRun: day,
+      questionFor: { day, text: question ?? '' },
+      followUpFor: { day, text: followUp ?? '' },
+      ...(scanned ? { intentScanned: addDaysId(day, -1) } : {}),
+    },
+    { merge: true },
+  );
+  return { question, followUp };
 });

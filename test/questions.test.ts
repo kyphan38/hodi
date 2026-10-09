@@ -23,10 +23,11 @@ test('reads the questions in a page', () => {
   assert.deepEqual([...askedIn('· 08:10\n› Q1?\nabc\n\n· 09:00\n› Q2?\n')], ['Q1?', 'Q2?']);
 });
 
-test('the AI pick comes first, until answered or skipped', () => {
+test('AI picks come first in order, then the usual questions', () => {
   const day = '2026-10-05';
-  const pick = QUESTIONS[3];
-  assert.deepEqual(nextQuestion(day, new Set(), 0, pick), { question: pick, skip: 0 });
-  assert.notEqual(nextQuestion(day, new Set([pick]), 0, pick).question, pick);
-  assert.equal(nextQuestion(day, new Set(), 1, pick).question, nextQuestion(day, new Set(), 1).question);
+  const picks = ['Did you call mom?', QUESTIONS[3]];
+  assert.deepEqual(nextQuestion(day, new Set(), 0, picks), { question: picks[0], skip: 0 });
+  assert.deepEqual(nextQuestion(day, new Set(), 1, picks), { question: picks[1], skip: 1 });
+  assert.deepEqual(nextQuestion(day, new Set([picks[0]]), 0, picks), { question: picks[1], skip: 1 });
+  assert.equal(nextQuestion(day, new Set(), 2, picks).question, questionFor(day, 0));
 });

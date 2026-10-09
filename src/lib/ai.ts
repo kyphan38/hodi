@@ -39,6 +39,9 @@ export function deeperBlock(block: AiBlock): Promise<{ question: string }> {
   return call('deeper', { block });
 }
 
-export function dailyQuestion(day: string, candidates: readonly string[]): Promise<{ question: string | null }> {
+export function dailyQuestion(
+  day: string,
+  candidates: readonly string[],
+): Promise<{ question: string | null; followUp: string | null; busy?: boolean }> {
   return call('daily', { day, candidates });
 }

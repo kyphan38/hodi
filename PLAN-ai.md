@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1-A4 xong và đã deploy (2026-10-09).** Tiếp theo: A5 (khép vòng lặp #8, gắn vào function `daily`).
+Ngày viết: 2026-10-09. Trạng thái: **A1-A5 xong và đã deploy (2026-10-09).** Tiếp theo: A6 (`story` + On this day).
 
 ## Mục tiêu
 
@@ -182,6 +182,14 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
   từ danh sách `QUESTIONS` dựa trên 7 ngày trước. `another` quay về thứ tự cũ.
   Câu hỏi vẫn là tiếng Anh (danh sách có sẵn).
 
+## Ghi chú sau A5
+
+- `daily` tìm lời hứa trong các trang chưa đọc (tối đa 7 ngày trước), lưu `intentions`
+  với `askOn` (mặc định +3, "tuần sau" +7, "mai" +2). Lời hứa đến hạn được hỏi **1 lần**:
+  đánh dấu `asked` ngay khi lấy ra, hiện trước câu hỏi của ngày, `another` để bỏ qua.
+- Khoá bằng transaction (`meta/ai.claim`): hai lần mở cùng lúc không quét hai lần.
+- Cần bật `Daily question` và `AI` thì mới chạy.
+
 ## Các phase
 
 | Phase | Nội dung | Kiểm chứng |
@@ -191,7 +199,7 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 | A2 ✅ | `reflect` + `next time` + `keep` + trang `/lessons` + "what helped before" (60 ngày) | Viết 1 trải nghiệm tệ → nhận 1-3 bước, giữ được bài học, lần sau được nhắc lại |
 | A3 ✅ | `look back` cho review tuần/tháng | Mở review tuần → 2-3 điều lặp lại có trích ngày |
 | A4 ✅ | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
-| A5 | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
+| A5 ✅ | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
 | A6 | `story` (CBT) + On this day có ý nghĩa | Viết "I always fail" → nhận câu hỏi tìm bằng chứng ngược lại |
 | A7 | Tìm theo ý nghĩa: embeddings cho mỗi khối, lưu Firestore vector; `next time` dùng nó thay 60 ngày | Gõ "lo về công việc" ở Days → ra đúng ngày dù không có chữ "công việc" |
 

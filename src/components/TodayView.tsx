@@ -20,7 +20,7 @@ import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
 import { useAiNotes } from '@/hooks/useAiNotes';
-import { useDailyQuestion } from '@/hooks/useDailyQuestion';
+import { useDailyQuestions } from '@/hooks/useDailyQuestions';
 import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { lastInputAt } from '@/lib/activity';
@@ -93,8 +93,8 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   }, [blocks]);
 
   // Prompt: the next question not answered today. "another" moves one on.
-  const pick = useDailyQuestion(uid, day, aiOn && questionsOn);
-  const suggestion = nextQuestion(day, answered(blocks), skip, pick);
+  const picks = useDailyQuestions(uid, day, aiOn && questionsOn);
+  const suggestion = nextQuestion(day, answered(blocks), skip, picks);
   const composing = editing === null;
   const activeQuestion = composing
     ? (deeperQ ?? (questionsOn && !freeWrite ? suggestion.question : null))
