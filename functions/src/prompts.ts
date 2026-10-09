@@ -278,3 +278,78 @@ export function checkCandidates(raw: unknown): string[] {
   if (list.length === 0 || list.length > 200) throw new Error('bad candidates');
   return list;
 }
+
+// ---- Follow-ups (PLAN-ai #8): promises to ask about once, a few days later ----
+
+export type Intention = { day: string; text: string; askOn: string; question: string };
+
+/** Default wait before asking, when the page gives no time ("next week" = 7). */
+export const FOLLOW_UP_DAYS = 3;
+
+export function buildIntentionsPrompt(pages: string, open: readonly string[], lang: Lang): string {
+  return `You read someone's private journal pages and find clear promises to themselves:
+things they said they WILL do ("tomorrow I will...", "tuần sau mình sẽ...", "I promised mom I'd...").
+- Only real, concrete plans. Not wishes ("I wish..."), not habits, not things already done.
+- Skip anything already in the open list below.
+- At most 3, the most important first. [] is a fine answer.
+
+For each, return:
+- "day": the page date it was written on, exactly as shown.
+- "text": the promise in a few words.
+- "askOn": "YYYY-MM-DD", the day to gently ask about it. Default: ${FOLLOW_UP_DAYS} days after "day".
+  "tomorrow" = 2 days after "day"; "next week" = 7 days after "day"; a named date = the day after that date.
+- "question": one short, kind question asking if they did it. No pressure, no judgment. Under 15 words.
+
+${replyLanguageRule(lang)}
+
+Return JSON: {"intentions": [...]}
+
+Already open (do not repeat):
+${open.length ? open.map((t) => `- ${t}`).join('\n') : '- none'}
+
+Pages (newest first):
+${pages}`;
+}
+
+export const INTENTIONS_SCHEMA = {
+  type: 'object',
+  properties: {
+    intentions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { day: str, text: str, askOn: str, question: str },
+        required: ['day', 'text', 'askOn', 'question'],
+      },
+    },
+  },
+  required: ['intentions'],
+};
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Keeps promises from real pages. askOn must be 1-60 days after the page,
+ * otherwise it falls back to FOLLOW_UP_DAYS. addDays is passed in to keep
+ * this file free of date code.
+ */
+export function parseIntentions(
+  raw: string,
+  knownDays: ReadonlySet<string>,
+  addDays: (day: string, n: number) => string,
+): Intention[] {
+  const list = (JSON.parse(raw) as Record<string, unknown>).intentions;
+  if (!Array.isArray(list)) return [];
+  const out: Intention[] = [];
+  for (const item of list) {
+    const it = (item ?? {}) as Record<string, unknown>;
+    const day = clean(it.day, 10);
+    const text = clean(it.text, 200);
+    const question = clean(it.question, 200).replace(/\s+/g, ' ');
+    if (!knownDays.has(day) || !text || !question) continue;
+    let askOn = clean(it.askOn, 10);
+    if (!DAY_RE.test(askOn) || askOn <= day || askOn > addDays(day, 60)) askOn = addDays(day, FOLLOW_UP_DAYS);
+    out.push({ day, text, askOn, question });
+  }
+  return out.slice(0, 3);
+}

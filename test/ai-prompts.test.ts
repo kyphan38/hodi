@@ -6,10 +6,12 @@ import { addDaysId, periodRange } from '../functions/src/dates.ts';
 import { periodDays } from '@/lib/review';
 import {
   buildDeeperPrompt,
+  buildIntentionsPrompt,
   buildLookBackPrompt,
   buildPickPrompt,
   checkCandidates,
   parseDeeper,
+  parseIntentions,
   parsePick,
   buildNextTimePrompt,
   buildReflectPrompt,
@@ -145,4 +147,33 @@ test('checkCandidates drops junk and refuses empty lists', () => {
   assert.deepEqual(checkCandidates(['A?', '', 3, 'B?']), ['A?', 'B?']);
   assert.throws(() => checkCandidates([]));
   assert.throws(() => checkCandidates('A?'));
+});
+
+test('intentions prompt lists open promises and the language', () => {
+  const p = buildIntentionsPrompt('### 2026-10-08\nhi', ['Call mom'], 'vi');
+  assert.match(p, /- Call mom/);
+  assert.match(p, /Vietnamese/);
+});
+
+test('parseIntentions keeps real days and fixes a bad askOn', () => {
+  const known = new Set(['2026-10-08']);
+  const out = parseIntentions(
+    JSON.stringify({
+      intentions: [
+        { day: '2026-10-08', text: 'Go home', askOn: '2026-10-31', question: 'Did you  go home?' },
+        { day: '2026-10-08', text: 'Run', askOn: '2026-10-01', question: 'Did you run?' },
+        { day: '2026-10-08', text: 'Read', askOn: 'soon', question: 'Did you read?' },
+        { day: '1999-01-01', text: 'Fake', askOn: '1999-01-04', question: 'Fake?' },
+        { day: '2026-10-08', text: '', askOn: '2026-10-11', question: 'Empty?' },
+      ],
+    }),
+    known,
+    addDaysId,
+  );
+  assert.deepEqual(out, [
+    { day: '2026-10-08', text: 'Go home', askOn: '2026-10-31', question: 'Did you go home?' },
+    { day: '2026-10-08', text: 'Run', askOn: '2026-10-11', question: 'Did you run?' },
+    { day: '2026-10-08', text: 'Read', askOn: '2026-10-11', question: 'Did you read?' },
+  ]);
+  assert.deepEqual(parseIntentions(JSON.stringify({ intentions: 'x' }), known, addDaysId), []);
 });
