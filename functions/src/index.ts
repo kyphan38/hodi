@@ -23,6 +23,8 @@ import {
   buildIntentionsPrompt,
   buildLookBackPrompt,
   buildPickPrompt,
+  buildStoryPrompt,
+  buildThenNowPrompt,
   buildNextTimePrompt,
   buildReflectPrompt,
   checkBlock,
@@ -35,7 +37,11 @@ import {
   parseIntentions,
   parseLookBack,
   parsePick,
+  parseStory,
+  parseThenNow,
   PICK_SCHEMA,
+  STORY_SCHEMA,
+  THEN_NOW_SCHEMA,
   parseNextTime,
   parseReflect,
   REFLECT_SCHEMA,
@@ -94,15 +100,22 @@ async function loadContext(uid: string, day: string): Promise<Context> {
   return { past: formatPast(entries), lessons: formatLessons(lessons), knownDays };
 }
 
-type Kind = 'reflect' | 'nextTime' | 'lookBack';
+type Kind = 'reflect' | 'nextTime' | 'lookBack' | 'story' | 'onThisDay';
 
 /** `day` is a day id, or a review period id for lookBack. */
-async function saveNote(uid: string, day: string, blockTime: string | null, kind: Kind, result: object) {
+async function saveNote(
+  uid: string,
+  day: string,
+  blockTime: string | null,
+  kind: Kind,
+  result: object,
+  extra: Record<string, unknown> = {},
+) {
   const ref = await getFirestore()
     .collection('users')
     .doc(uid)
     .collection('aiNotes')
-    .add({ day, blockTime, kind, result, createdAt: Date.now() });
+    .add({ day, blockTime, kind, result, createdAt: Date.now(), ...extra });
   return ref.id;
 }
 
@@ -343,4 +356,60 @@ export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, a
     { merge: true },
   );
   return { question, followUp };
+});
+
+/** Tests a harsh story they tell about themselves against their own past pages. */
+export const story = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
+  const uid = guard(req);
+  const { block, lang } = readInput(req);
+  return run('story', async () => {
+    const ctx = await loadContext(uid, block.day);
+    const raw = await generateText(
+      GEMINI_API_KEY.value(),
+      GEMINI_MODEL.value(),
+      buildStoryPrompt(block, ctx.past, ctx.lessons, lang),
+      { temperature: 0.4, timeoutMs: 45_000, jsonSchema: STORY_SCHEMA },
+    );
+    const result = parseStory(raw, ctx.knownDays);
+    const id = await saveNote(uid, block.day, block.time, 'story', result);
+    return { id, result };
+  });
+});
+
+/** Days of recent pages compared with an "On this day" page. */
+const THEN_NOW_DAYS = 30;
+
+/** "On this day": what was on their mind then, how it looks now. */
+export const onThisDay = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
+  const uid = guard(req);
+  const data = (req.data ?? {}) as { day?: unknown; then?: unknown; lang?: unknown };
+  const isDay = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!isDay(data.day) || !isDay(data.then) || data.then >= data.day) {
+    throw new HttpsError('invalid-argument', 'Bad days');
+  }
+  const day = data.day;
+  const thenDay = data.then;
+  const lang = parseLang(data.lang);
+
+  const user = getFirestore().collection('users').doc(uid);
+  const thenDoc = (await user.collection('entries').doc(thenDay).get()).data() as PastEntry | undefined;
+  if (!thenDoc?.text.trim()) throw new HttpsError('not-found', 'No page');
+
+  return run('onThisDay', async () => {
+    const snap = await user
+      .collection('entries')
+      .where('date', '>=', addDaysId(day, -THEN_NOW_DAYS))
+      .where('date', '<=', day)
+      .get();
+    const recent = formatPast(snap.docs.map((d) => d.data() as PastEntry));
+    const raw = await generateText(
+      GEMINI_API_KEY.value(),
+      GEMINI_MODEL.value(),
+      buildThenNowPrompt(day, thenDay, thenDoc.text, recent, lang),
+      { temperature: 0.4, timeoutMs: 45_000, jsonSchema: THEN_NOW_SCHEMA },
+    );
+    const result = parseThenNow(raw);
+    const id = await saveNote(uid, day, null, 'onThisDay', result, { source: thenDay });
+    return { id, result };
+  });
 });

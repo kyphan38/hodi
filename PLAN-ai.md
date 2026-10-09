@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1-A5 xong và đã deploy (2026-10-09).** Tiếp theo: A6 (`story` + On this day).
+Ngày viết: 2026-10-09. Trạng thái: **A1-A6 xong và đã deploy (2026-10-09).** Tiếp theo: A7 (tìm theo ý nghĩa, embeddings).
 
 ## Mục tiêu
 
@@ -190,6 +190,13 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 - Khoá bằng transaction (`meta/ai.claim`): hai lần mở cùng lúc không quét hai lần.
 - Cần bật `Daily question` và `AI` thì mới chạy.
 
+## Ghi chú sau A6
+
+- `story` nằm cạnh `reflect · next time`: câu chuyện bạn tự kể, tối đa 3 sự thật từ ngày cũ
+  "không khớp" (bỏ ngày bịa), một câu "truer", một câu hỏi.
+- On this day: `now?` ở cuối mỗi dòng. So trang cũ với 30 ngày gần nhất; `now` = null khi
+  các trang gần đây không nhắc lại chuyện đó. Note lưu với `source` = ngày cũ.
+
 ## Các phase
 
 | Phase | Nội dung | Kiểm chứng |
@@ -200,7 +207,7 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 | A3 ✅ | `look back` cho review tuần/tháng | Mở review tuần → 2-3 điều lặp lại có trích ngày |
 | A4 ✅ | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
 | A5 ✅ | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
-| A6 | `story` (CBT) + On this day có ý nghĩa | Viết "I always fail" → nhận câu hỏi tìm bằng chứng ngược lại |
+| A6 ✅ | `story` (CBT) + On this day có ý nghĩa | Viết "I always fail" → nhận câu hỏi tìm bằng chứng ngược lại |
 | A7 | Tìm theo ý nghĩa: embeddings cho mỗi khối, lưu Firestore vector; `next time` dùng nó thay 60 ngày | Gõ "lo về công việc" ở Days → ra đúng ngày dù không có chữ "công việc" |
 
 Mỗi phase: test thuần cho logic (prompt builder, parse kết quả, chọn ngày hỏi lại), test rules

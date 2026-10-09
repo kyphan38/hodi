@@ -353,3 +353,105 @@ export function parseIntentions(
   }
   return out.slice(0, 3);
 }
+
+// ---- Story: look at a harsh story they tell about themselves (CBT style) ----
+
+export type Evidence = { day: string; text: string };
+export type StoryResult = {
+  story: string;
+  against: Evidence[];
+  kinder: string;
+  question: string;
+};
+
+export function buildStoryPrompt(b: BlockInput, past: string, lessons: string, lang: Lang): string {
+  return `${VOICE}
+
+Task: CHECK THE STORY. In the part below they may tell a harsh story about themselves or their life
+("I always fail", "nobody cares", "I'm lazy"). Help them test it gently, like a fair friend, not a judge.
+- Do not argue them out of their feelings. The feeling is real; the story may be too big.
+- Find concrete facts from their own past pages that do NOT fit the story. Never invent.
+
+Return JSON:
+- "story": the story in one short sentence, in their voice (for example "I always mess things up").
+  If there is no harsh story, write what they seem to believe about the situation.
+- "against": up to 3 facts from their past pages that do not fit the story.
+  Each {"day": "YYYY-MM-DD" exactly as shown, "text": one short sentence}. [] if none.
+- "kinder": one fair, realistic sentence that is truer than the story. Not cheerful, not fake.
+- "question": one question that helps them test the story themselves.
+
+${replyLanguageRule(lang)}
+
+${contextText(past, lessons)}
+
+Today is ${b.day}. The part they want you to read:
+${blockText(b)}`;
+}
+
+export const STORY_SCHEMA = {
+  type: 'object',
+  properties: {
+    story: str,
+    against: {
+      type: 'array',
+      items: { type: 'object', properties: { day: str, text: str }, required: ['day', 'text'] },
+    },
+    kinder: str,
+    question: str,
+  },
+  required: ['story', 'against', 'kinder', 'question'],
+};
+
+function cleanEvidence(raw: unknown, knownDays: ReadonlySet<string>, max: number): Evidence[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((h) => ({ day: clean((h as Evidence)?.day, 10), text: clean((h as Evidence)?.text, 300) }))
+    .filter((h) => h.text && knownDays.has(h.day))
+    .slice(0, max);
+}
+
+export function parseStory(raw: string, knownDays: ReadonlySet<string>): StoryResult {
+  const j = JSON.parse(raw) as Record<string, unknown>;
+  const story = clean(j.story, 300);
+  const kinder = clean(j.kinder, 400);
+  if (!story || !kinder) throw new Error('story: empty');
+  return { story, against: cleanEvidence(j.against, knownDays, 3), kinder, question: clean(j.question, 300) };
+}
+
+// ---- On this day: then and now ----
+
+export type ThenNowResult = { then: string; now: string | null; question: string };
+
+export function buildThenNowPrompt(today: string, thenDay: string, thenText: string, recent: string, lang: Lang): string {
+  return `${VOICE}
+
+Task: THEN AND NOW. Below is their page from ${thenDay}, and their pages from the last weeks
+(today is ${today}). Compare gently.
+
+Return JSON:
+- "then": one sentence on what was on their mind then (a worry, a hope, a situation). Do not write the date.
+- "now": one sentence on how that same thing looks in the recent pages, or null if the recent
+  pages do not mention it. Never guess.
+- "question": one open question, for example how it turned out or what changed in them.
+
+${replyLanguageRule(lang)}
+
+Page from ${thenDay}:
+${thenText.trim()}
+
+Recent pages (newest first):
+${recent || 'none'}`;
+}
+
+export const THEN_NOW_SCHEMA = {
+  type: 'object',
+  properties: { then: str, now: { type: ['string', 'null'] }, question: str },
+  required: ['then', 'now', 'question'],
+};
+
+export function parseThenNow(raw: string): ThenNowResult {
+  const j = JSON.parse(raw) as Record<string, unknown>;
+  const then = clean(j.then, 400);
+  if (!then) throw new Error('thenNow: empty');
+  return { then, now: clean(j.now, 400) || null, question: clean(j.question, 300) };
+}

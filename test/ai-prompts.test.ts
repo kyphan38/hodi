@@ -9,10 +9,14 @@ import {
   buildIntentionsPrompt,
   buildLookBackPrompt,
   buildPickPrompt,
+  buildStoryPrompt,
+  buildThenNowPrompt,
   checkCandidates,
   parseDeeper,
   parseIntentions,
   parsePick,
+  parseStory,
+  parseThenNow,
   buildNextTimePrompt,
   buildReflectPrompt,
   checkBlock,
@@ -176,4 +180,32 @@ test('parseIntentions keeps real days and fixes a bad askOn', () => {
     { day: '2026-10-08', text: 'Read', askOn: '2026-10-11', question: 'Did you read?' },
   ]);
   assert.deepEqual(parseIntentions(JSON.stringify({ intentions: 'x' }), known, addDaysId), []);
+});
+
+test('parseStory keeps real evidence days and needs a story and a kinder line', () => {
+  const r = parseStory(
+    JSON.stringify({
+      story: 'I always fail.',
+      against: [
+        { day: '2026-10-07', text: 'You called mom.' },
+        { day: '2001-01-01', text: 'Invented.' },
+      ],
+      kinder: 'Some days go badly; not all of them.',
+      question: 'What went fine this week?',
+    }),
+    new Set(['2026-10-07']),
+  );
+  assert.deepEqual(r.against, [{ day: '2026-10-07', text: 'You called mom.' }]);
+  assert.throws(() => parseStory(JSON.stringify({ story: 'x', against: [], kinder: '', question: '' }), new Set()));
+  assert.match(buildStoryPrompt(block, '', '', 'en'), /CHECK THE STORY/);
+});
+
+test('parseThenNow turns an empty now into null', () => {
+  assert.deepEqual(parseThenNow(JSON.stringify({ then: 'Moving house.', now: '', question: 'How is it?' })), {
+    then: 'Moving house.',
+    now: null,
+    question: 'How is it?',
+  });
+  assert.throws(() => parseThenNow(JSON.stringify({ then: '', now: null, question: '' })));
+  assert.match(buildThenNowPrompt('2026-10-09', '2025-10-09', 'Moving.', '', 'vi'), /Page from 2025-10-09/);
 });
