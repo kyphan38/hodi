@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildHeatmap,
+  buildMonth,
   buildTimeline,
   findMatches,
   firstLine,
@@ -83,6 +84,18 @@ test('heatmap: 53 weeks, last week holds today, level by word count', () => {
   assert.equal(heatLevel(0), 0);
   assert.equal(heatLevel(99), 1);
   assert.equal(heatLevel(600), 4);
+});
+
+test('month grid: Monday first, padded, future marked', () => {
+  const rows = buildMonth([entry('2026-10-08', 'x '.repeat(150))], '2026-10', '2026-10-09');
+  assert.equal(rows.length, 5);
+  assert.deepEqual(rows[0].slice(0, 3), [null, null, null]); // 1 Oct 2026 is a Thursday
+  assert.equal(rows[0][3]?.date, '2026-10-01');
+  assert.equal(rows[1][3]?.level, 2); // 8 Oct
+  assert.equal(rows[1][4]?.future, false); // today
+  assert.equal(rows[1][5]?.future, true);
+  assert.equal(rows[4][5]?.date, '2026-10-31');
+  assert.equal(rows[4][6], null);
 });
 
 test('On this day: same month-day in earlier years', () => {

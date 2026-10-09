@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  addMonths,
   addDays,
   countWords,
   dayLabel,
@@ -66,4 +67,11 @@ test('counts Vietnamese/English words, ignoring lone punctuation', () => {
   assert.equal(countWords('   \n '), 0);
   assert.equal(countWords('Hôm nay trời mưa.'), 4);
   assert.equal(countWords('I felt ok - not great\n\n· 21:40\nstill ok'), 7); // time mark not counted
+});
+
+test('addMonths crosses years both ways', () => {
+  assert.equal(addMonths('2026-10', 1), '2026-11');
+  assert.equal(addMonths('2026-12', 1), '2027-01');
+  assert.equal(addMonths('2026-01', -1), '2025-12');
+  assert.equal(addMonths('2026-10', -12), '2025-10');
 });

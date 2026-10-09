@@ -132,6 +132,27 @@ export function buildHeatmap(
   return { weeks, months };
 }
 
+/**
+ * One month as calendar rows (Monday → Sunday). `null` pads the days of the
+ * neighbor months, so the 1st sits under its weekday.
+ */
+export function buildMonth(entries: Entry[], month: string, today: string): (HeatCell | null)[][] {
+  const words = new Map(entries.map((e) => [e.date, e.words]));
+  const first = `${month}-01`;
+  const rows: (HeatCell | null)[][] = [];
+  let row: (HeatCell | null)[] = Array(diffDays(weekStart(first), first)).fill(null);
+  for (let date = first; date.startsWith(month); date = addDays(date, 1)) {
+    const n = words.get(date) ?? 0;
+    row.push({ date, words: n, level: heatLevel(n), future: date > today });
+    if (row.length === 7) {
+      rows.push(row);
+      row = [];
+    }
+  }
+  if (row.length) rows.push([...row, ...Array(7 - row.length).fill(null)]);
+  return rows;
+}
+
 // ---- On this day / random ----
 
 /** Entries on the same month-day in earlier years, most recent first. */
