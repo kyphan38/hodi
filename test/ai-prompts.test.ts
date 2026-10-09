@@ -58,7 +58,7 @@ test('formatPast can put the oldest page first', () => {
 test('formatLessons lists day, text and situation', () => {
   assert.equal(
     formatLessons([{ text: 'Walk first.', situation: 'Angry at work', sourceDay: '2026-09-12' }]),
-    '- (2026-09-12) Walk first. [when: Angry at work]',
+    '0. (2026-09-12) Walk first. [when: Angry at work]',
   );
 });
 
@@ -99,6 +99,32 @@ test('parseAnalysis keeps real days, drops guesses, caps lists', () => {
   assert.deepEqual(r.story?.against, [{ text: 'Called mom', days: ['2026-10-08'] }]);
   assert.deepEqual(r.steps, ['a', 'b', 'c']);
   assert.deepEqual(r.helpedBefore, [{ text: 'A walk helped', days: ['2026-09-01'] }]);
+});
+
+test('parseAnalysis maps lessons in action to real lessons and range days', () => {
+  const base = { overview: 'ok', gives: [], takes: [], patterns: [], wins: [], story: null, steps: [], helpedBefore: [], question: '' };
+  const inRange = new Set(['2026-10-08', '2026-10-09']);
+  const known = new Set([...inRange, '2026-09-01']);
+  const r = parseAnalysis(
+    JSON.stringify({
+      ...base,
+      lessonsInAction: [
+        { lesson: 1, used: true, text: 'Wrote notes before the meeting.', days: ['2026-10-09'] },
+        { lesson: 0, used: false, text: 'Snapped again.', days: ['2026-10-08', '2026-09-01'] },
+        { lesson: 5, used: true, text: 'No such lesson.', days: ['2026-10-09'] },
+        { lesson: 0, used: true, text: 'Outside the range.', days: ['2026-09-01'] },
+        { lesson: 0, used: 'yes', text: 'Bad flag.', days: ['2026-10-09'] },
+      ],
+    }),
+    known,
+    ['Talk in private.', 'Write two points first.'],
+    inRange,
+  );
+  assert.deepEqual(r.lessonsInAction, [
+    { lesson: 'Write two points first.', used: true, text: 'Wrote notes before the meeting.', days: ['2026-10-09'] },
+    { lesson: 'Talk in private.', used: false, text: 'Snapped again.', days: ['2026-10-08'] },
+  ]);
+  assert.deepEqual(parseAnalysis(JSON.stringify(base), known).lessonsInAction, []);
 });
 
 test('parseAnalysis keeps the newest 4 days of an item', () => {

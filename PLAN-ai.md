@@ -252,5 +252,8 @@ dòng an toàn.
   Lưu ở `aiNotes` (kind `analysis`, `range`, `from`, `to`); hiện bản mới nhất của mỗi khoảng.
 - `search by meaning` (function `search`, A7).
 - `lessons`: danh sách bài học, sửa / `archive`.
+- `lessons in action`: mỗi lần phân tích, AI so bài học đã giữ với các trang trong khoảng:
+  `used` (đã làm theo) hoặc `could have helped` (lúc có thể dùng mà chưa dùng), kèm ngày.
+  Không chấm điểm, không trách. Chỉ ngày trong khoảng mới được ghi.
 
 **Để sau:** 1 năm (tóm tắt từng tháng trước rồi phân tích 12 bản tóm tắt); tự chọn ngày.

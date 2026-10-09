@@ -49,6 +49,8 @@ export type AnalysisResult = {
   story: { story: string; against: Dated[]; truer: string } | null;
   steps: string[];
   helpedBefore: Dated[];
+  /** Missing in analyses made before this field existed. */
+  lessonsInAction?: { lesson: string; used: boolean; text: string; days: string[] }[];
   question: string;
 };
 

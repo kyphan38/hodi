@@ -286,7 +286,12 @@ export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }
       { temperature: 0.4, timeoutMs: 90_000, jsonSchema: ANALYZE_SCHEMA },
     );
     const knownDays = new Set([...entries.map((e) => e.date), ...related.map((h) => h.day), ...lessons.map((l) => l.sourceDay)]);
-    const result = parseAnalysis(raw, knownDays);
+    const result = parseAnalysis(
+      raw,
+      knownDays,
+      lessons.map((l) => l.text),
+      new Set(entries.map((e) => e.date)),
+    );
     const ref = await user
       .collection('aiNotes')
       .add({ kind: 'analysis', day, range, from, to, blockTime: null, result, createdAt: Date.now() });
