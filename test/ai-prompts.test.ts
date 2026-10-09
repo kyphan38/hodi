@@ -6,7 +6,11 @@ import { chunkPage, hashText, scoreOf } from '../functions/src/chunks.ts';
 import { CONTEXT_MAX_CHARS, formatLessons, formatPast } from '../functions/src/context.ts';
 import { addDaysId, parseRange, rangeDays } from '../functions/src/dates.ts';
 import {
+  analysisText,
   buildAnalyzePrompt,
+  buildTalkPrompt,
+  parseTalk,
+  TALK_MAX_REPLIES,
   buildIntentionsPrompt,
   buildPickPrompt,
   checkCandidates,
@@ -214,4 +218,51 @@ test('hashText is stable and changes with the text; scoreOf clamps', () => {
   assert.notEqual(hashText('abc'), hashText('abd'));
   assert.equal(scoreOf(0.2), 0.8);
   assert.equal(scoreOf(1.7), 0);
+});
+
+const analysis = {
+  overview: 'A hard week at work.',
+  gives: [{ text: 'Walks', days: ['2026-10-08'] }],
+  takes: [{ text: 'A fight with a coworker', days: ['2026-10-09'] }],
+  patterns: [],
+  wins: [],
+  story: null,
+  steps: ['Talk in private.'],
+  helpedBefore: [],
+  question: 'What would help you stay calm?',
+};
+
+test('analysisText lists what was already said', () => {
+  const t = analysisText(analysis);
+  assert.match(t, /A hard week at work\./);
+  assert.match(t, /Takes energy: A fight with a coworker/);
+  assert.match(t, /Steps offered: Talk in private\./);
+  assert.match(t, /Question asked: What would help you stay calm\?/);
+  assert.ok(!t.includes('Keeps coming back'));
+});
+
+test('talk prompt counts replies and pushes to options, then to close', () => {
+  const chat = [
+    { role: 'ai' as const, text: 'What would help you stay calm?' },
+    { role: 'me' as const, text: 'Not sure.' },
+  ];
+  const p = buildTalkPrompt('A hard week.', '### 2026-10-09\nfight', '', chat, 'vi');
+  assert.match(p, /This is reply 2 of at most 12\./);
+  assert.ok(!p.includes('Move to options now'));
+  assert.match(p, /Them: Not sure\./);
+  assert.match(p, /Vietnamese/);
+  const long = Array.from({ length: TALK_MAX_REPLIES - 1 }, (_, i) => [
+    { role: 'ai' as const, text: `q${i}` },
+    { role: 'me' as const, text: `a${i}` },
+  ]).flat();
+  const last = buildTalkPrompt('x', 'y', '', long, 'en');
+  assert.match(last, /Move to options now/);
+  assert.match(last, /This is the last reply: close\./);
+});
+
+test('parseTalk caps steps and closes on the last reply', () => {
+  const r = parseTalk(JSON.stringify({ reply: ' Ok. ', steps: ['a', '', 'b', 'c', 'd'], done: false }), false);
+  assert.deepEqual(r, { reply: 'Ok.', steps: ['a', 'b', 'c'], done: false });
+  assert.equal(parseTalk(JSON.stringify({ reply: 'Bye.', steps: [], done: false }), true).done, true);
+  assert.throws(() => parseTalk(JSON.stringify({ reply: '', steps: [], done: true }), false));
 });
