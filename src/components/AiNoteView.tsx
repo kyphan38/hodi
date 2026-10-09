@@ -9,7 +9,13 @@ import type { AiNote } from '@/types/hodi';
 
 const label = 'font-mono text-[11px] tracking-[0.04em] text-faint';
 
-const TITLE: Record<AiNote['kind'], string> = { reflect: 'reflect', nextTime: 'next time', lookBack: 'look back' };
+const TITLE: Record<AiNote['kind'], string> = {
+  reflect: 'reflect',
+  nextTime: 'next time',
+  lookBack: 'look back',
+  story: 'story',
+  onThisDay: 'then and now',
+};
 
 /** One AI note under its block: faint, indented, tap the label to fold. */
 export default function AiNoteView({ uid, note, flush }: { uid: string; note: AiNote; flush?: boolean }) {
@@ -23,6 +29,8 @@ export default function AiNoteView({ uid, note, flush }: { uid: string; note: Ai
       {open && note.kind === 'reflect' && <Reflect uid={uid} note={note} />}
       {open && note.kind === 'nextTime' && <NextTime uid={uid} note={note} />}
       {open && note.kind === 'lookBack' && <LookBack note={note} />}
+      {open && note.kind === 'story' && <Story note={note} />}
+      {open && note.kind === 'onThisDay' && <ThenNow note={note} />}
     </div>
   );
 }
@@ -59,14 +67,7 @@ function NextTime({ uid, note }: { uid: string; note: Extract<AiNote, { kind: 'n
       )}
       {r.helpedBefore.length > 0 && (
         <Section title="helped before">
-          <ul className="space-y-1">
-            {r.helpedBefore.map((h) => (
-              <li key={h.day + h.text} className="flex gap-3">
-                <span className={`${label} w-12 shrink-0 pt-0.5`}>{dayTiny(h.day)}</span>
-                <span className="text-muted">{h.text}</span>
-              </li>
-            ))}
-          </ul>
+          <Dated items={r.helpedBefore} />
         </Section>
       )}
     </>
@@ -87,6 +88,54 @@ function LookBack({ note }: { note: Extract<AiNote, { kind: 'lookBack' }> }) {
       </ul>
       {r.question && <p className="mt-2 text-faint">{r.question}</p>}
     </>
+  );
+}
+
+function Story({ note }: { note: Extract<AiNote, { kind: 'story' }> }) {
+  const r = note.result;
+  return (
+    <>
+      <p className="text-muted">&ldquo;{r.story}&rdquo;</p>
+      {r.against.length > 0 && (
+        <Section title="does not fit">
+          <Dated items={r.against} />
+        </Section>
+      )}
+      <Section title="truer">
+        <p className="text-muted">{r.kinder}</p>
+      </Section>
+      {r.question && <p className="mt-2 text-faint">{r.question}</p>}
+    </>
+  );
+}
+
+function ThenNow({ note }: { note: Extract<AiNote, { kind: 'onThisDay' }> }) {
+  const r = note.result;
+  return (
+    <>
+      <Section title={dayTiny(note.source) + ' ' + note.source.slice(0, 4)}>
+        <p className="text-muted">{r.then}</p>
+      </Section>
+      {r.now && (
+        <Section title="now">
+          <p className="text-muted">{r.now}</p>
+        </Section>
+      )}
+      {r.question && <p className="mt-2 text-faint">{r.question}</p>}
+    </>
+  );
+}
+
+function Dated({ items }: { items: { day: string; text: string }[] }) {
+  return (
+    <ul className="space-y-1">
+      {items.map((h) => (
+        <li key={h.day + h.text} className="flex gap-3">
+          <span className={`${label} w-12 shrink-0 pt-0.5`}>{dayTiny(h.day)}</span>
+          <span className="text-muted">{h.text}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

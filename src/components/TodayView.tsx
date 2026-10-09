@@ -24,7 +24,7 @@ import { useDailyQuestions } from '@/hooks/useDailyQuestions';
 import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { lastInputAt } from '@/lib/activity';
-import { deeperBlock, nextTimeBlock, reflectBlock } from '@/lib/ai';
+import { deeperBlock, nextTimeBlock, reflectBlock, storyBlock } from '@/lib/ai';
 import { answered, parseBlocks, serializeBlocks, type Block } from '@/lib/blocks';
 import { countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
@@ -108,14 +108,14 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   const [aiFailed, setAiFailed] = useState(false);
 
   /** Sends one block; the function saves the note and the listener shows it. */
-  const askAi = async (kind: 'reflect' | 'nextTime', i: number) => {
+  const askAi = async (kind: 'reflect' | 'nextTime' | 'story', i: number) => {
     const b = blocks[i];
     if (!b?.body.trim() || aiBusy) return;
     page.flush();
     setAiBusy(true);
     setAiFailed(false);
     try {
-      const send = kind === 'reflect' ? reflectBlock : nextTimeBlock;
+      const send = { reflect: reflectBlock, nextTime: nextTimeBlock, story: storyBlock }[kind];
       await send({ day, time: b.time, question: b.question, body: b.body });
     } catch (err) {
       console.warn('[ai] call failed', err);
@@ -224,6 +224,10 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
             <span className="py-1 text-[11px] text-faint">·</span>
             <button type="button" onClick={() => askAi('nextTime', i)} className={link}>
               next time
+            </button>
+            <span className="py-1 text-[11px] text-faint">·</span>
+            <button type="button" onClick={() => askAi('story', i)} className={link}>
+              story
             </button>
             {aiFailed && <span className="py-1 font-mono text-[11px] text-faint">failed</span>}
           </>

@@ -45,3 +45,11 @@ export function dailyQuestion(
 ): Promise<{ question: string | null; followUp: string | null; busy?: boolean }> {
   return call('daily', { day, candidates });
 }
+
+export function storyBlock(block: AiBlock): Promise<{ id: string }> {
+  return call('story', { block });
+}
+
+export function thenAndNow(day: string, then: string): Promise<{ id: string }> {
+  return call('onThisDay', { day, then });
+}

@@ -46,6 +46,15 @@ export type NextTimeResult = {
   helpedBefore: { day: string; text: string }[];
 };
 
+export type StoryResult = {
+  story: string;
+  against: { day: string; text: string }[];
+  kinder: string;
+  question: string;
+};
+
+export type ThenNowResult = { then: string; now: string | null; question: string };
+
 export type LookBackResult = { patterns: { text: string; days: string[] }[]; question: string };
 
 /**
@@ -56,4 +65,7 @@ export type AiNote = { id: string; day: string; blockTime: string | null; create
   | { kind: 'reflect'; result: ReflectResult }
   | { kind: 'nextTime'; result: NextTimeResult }
   | { kind: 'lookBack'; result: LookBackResult }
+  | { kind: 'story'; result: StoryResult }
+  /** `source`: the old page compared with today. */
+  | { kind: 'onThisDay'; result: ThenNowResult; source: string }
 );
