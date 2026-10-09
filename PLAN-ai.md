@@ -1,6 +1,6 @@
 # PLAN-ai - Tích hợp AI vào hodi
 
-Ngày viết: 2026-10-09. Trạng thái: **A1-A6 xong và đã deploy (2026-10-09).** Tiếp theo: A7 (tìm theo ý nghĩa, embeddings).
+Ngày viết: 2026-10-09. Trạng thái: **A1-A7 xong và đã deploy (2026-10-09). Plan hoàn tất.** Tiếp theo: chủ app dùng thử rồi chỉnh.
 
 ## Mục tiêu
 
@@ -197,6 +197,17 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 - On this day: `now?` ở cuối mỗi dòng. So trang cũ với 30 ngày gần nhất; `now` = null khi
   các trang gần đây không nhắc lại chuyện đó. Note lưu với `source` = ngày cũ.
 
+## Ghi chú sau A7
+
+- Index: `users/{uid}/chunks/{day}_{i}`, mỗi khối một vector 768 chiều (`gemini-embedding-2`),
+  vector index trong `firestore.indexes.json`. Chunks là dữ liệu phụ, được xoá/thay khi trang đổi.
+- Index được cập nhật dần: `daily` (15 giây mỗi sáng) và `search` (35 giây mỗi lần), theo
+  `meta/ai.indexedAt`. Chỉ khối đổi chữ mới gọi lại AI (so hash). 188 trang mất ~9 giây.
+- Days: gõ tìm kiếm → `by meaning` dưới kết quả theo chữ. Index chưa xong thì có dòng
+  "Still reading older pages" + `Search again`.
+- `reflect`, `next time`, `story` giờ gửi 14 ngày gần nhất + 12 khối cũ liên quan nhất,
+  thay cho 60 ngày. Không có index thì quay về 60 ngày như cũ.
+
 ## Các phase
 
 | Phase | Nội dung | Kiểm chứng |
@@ -208,7 +219,7 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
 | A4 ✅ | `deeper` + chọn câu hỏi thông minh (#6) | Câu hỏi ngày mai khác hash cũ, hợp với hôm qua |
 | A5 ✅ | Khép vòng lặp (#8) | Viết "mai mình sẽ chạy bộ" → 3 ngày sau thấy câu hỏi lại đúng 1 lần, ngày sau không thấy nữa |
 | A6 ✅ | `story` (CBT) + On this day có ý nghĩa | Viết "I always fail" → nhận câu hỏi tìm bằng chứng ngược lại |
-| A7 | Tìm theo ý nghĩa: embeddings cho mỗi khối, lưu Firestore vector; `next time` dùng nó thay 60 ngày | Gõ "lo về công việc" ở Days → ra đúng ngày dù không có chữ "công việc" |
+| A7 ✅ | Tìm theo ý nghĩa: embeddings cho mỗi khối, lưu Firestore vector; `next time` dùng nó thay 60 ngày | Gõ "lo về công việc" ở Days → ra đúng ngày dù không có chữ "công việc" |
 
 Mỗi phase: test thuần cho logic (prompt builder, parse kết quả, chọn ngày hỏi lại), test rules
 bằng emulator, `npm run typecheck && npm test`, rồi mới merge.

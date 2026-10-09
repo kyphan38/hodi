@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { parseBlocks } from '@/lib/blocks';
+import { chunkPage, hashText, scoreOf } from '../functions/src/chunks.ts';
 import { CONTEXT_MAX_CHARS, formatLessons, formatPast } from '../functions/src/context.ts';
 import { addDaysId, periodRange } from '../functions/src/dates.ts';
 import { periodDays } from '@/lib/review';
@@ -208,4 +210,36 @@ test('parseThenNow turns an empty now into null', () => {
   });
   assert.throws(() => parseThenNow(JSON.stringify({ then: '', now: null, question: '' })));
   assert.match(buildThenNowPrompt('2026-10-09', '2025-10-09', 'Moving.', '', 'vi'), /Page from 2025-10-09/);
+});
+
+test('chunkPage splits like the app blocks and skips empty ones', () => {
+  const text = '· 08:10\n› What drained you?\nLong meeting.\n\n· 12:00\n\n\n· 21:40\nA good coffee.\n\nSecond paragraph.';
+  const app = parseBlocks(text);
+  const chunks = chunkPage(text);
+  assert.deepEqual(
+    chunks.map((c) => c.i),
+    app.map((b, i) => (b.body.trim() ? i : -1)).filter((i) => i >= 0),
+  );
+  assert.deepEqual(chunks[0], {
+    i: 0,
+    time: '08:10',
+    question: 'What drained you?',
+    text: 'What drained you?\nLong meeting.',
+    hash: hashText('What drained you?\nLong meeting.'),
+  });
+  assert.equal(chunks[1].text, 'A good coffee.\n\nSecond paragraph.');
+  assert.deepEqual(chunkPage('   '), []);
+});
+
+test('old text without time marks is one chunk', () => {
+  const c = chunkPage('Just some words.\nMore.');
+  assert.equal(c.length, 1);
+  assert.equal(c[0].time, null);
+});
+
+test('hashText is stable and changes with the text; scoreOf clamps', () => {
+  assert.equal(hashText('abc'), hashText('abc'));
+  assert.notEqual(hashText('abc'), hashText('abd'));
+  assert.equal(scoreOf(0.2), 0.8);
+  assert.equal(scoreOf(1.7), 0);
 });

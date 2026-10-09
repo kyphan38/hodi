@@ -53,3 +53,10 @@ export function storyBlock(block: AiBlock): Promise<{ id: string }> {
 export function thenAndNow(day: string, then: string): Promise<{ id: string }> {
   return call('onThisDay', { day, then });
 }
+
+export type MeaningHit = { day: string; time: string | null; question: string | null; text: string; score: number };
+
+/** `partial`: the index is still being built, so older pages may be missing. */
+export function searchByMeaning(query: string): Promise<{ hits: MeaningHit[]; partial: boolean }> {
+  return call('search', { query });
+}
