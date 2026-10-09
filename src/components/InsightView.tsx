@@ -120,6 +120,10 @@ function RangeAnalysis({
     }
   };
   const fresh = latest?.to === today;
+  // Writing after the analysis (in its range) makes it out of date.
+  const { entries } = useJournal();
+  const outdated =
+    !!latest && entries.some((e) => e.date >= latest.from && e.date <= latest.to && e.updatedAt > latest.createdAt);
 
   return (
     <section className="mt-8">
@@ -134,6 +138,7 @@ function RangeAnalysis({
         {state === 'failed' && <span className={label}>failed</span>}
         {state === 'empty' && <span className={label}>no pages in this range</span>}
         {latest && !fresh && state !== 'busy' && <span className={label}>last: {rangeTitle(latest)}</span>}
+        {latest && fresh && outdated && state !== 'busy' && <span className={label}>new writing since</span>}
       </p>
       {latest && <AnalysisView uid={uid} a={latest} />}
     </section>

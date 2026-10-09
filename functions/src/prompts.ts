@@ -56,19 +56,22 @@ export function buildAnalyzePrompt(
 
 Task: ANALYZE ${rangeLabel}. Read every page in the range as a whole and help them see it clearly.
 Each item that points at pages lists those days ("YYYY-MM-DD" exactly as shown).
+Say each thing once: an item in one list must not come back, in other words, in another list.
 
 Return JSON:
 - "overview": 2-3 sentences: how this time was for them, in plain words.
 - "gives": up to 3 things that gave them energy. [] if none.
 - "takes": up to 3 things that took energy. [] if none.
-- "patterns": up to 3 things that came back more than once (a feeling, a situation, a habit).
-  For a single day: the threads that run through that day. [] if nothing repeats.
+- "patterns": up to 3 things that came back more than once (a feeling, a situation, a habit)
+  and are NOT already in "gives" or "takes". For a single day: the threads that run through
+  that day. [] if nothing new repeats.
 - "wins": up to 3 things they really did well, even small ones. [] if none.
 - "story": if they tell a harsh story about themselves ("I always fail", "nobody cares"):
   {"story": the story in their voice, one sentence; "against": up to 3 facts from their pages or
   older pages that do not fit it, each {"text", "days"}; "truer": one fair sentence truer than the story}.
   null if there is no such story.
 - "steps": 1-3 small, concrete things to try next time, built on what happened in this range.
+  The first step is about the thing that took the most energy or came back the most.
   Each one sentence, doable within a day or a week.
 - "helpedBefore": up to 2 things from older pages or kept lessons that helped in similar moments. [] if none.
 - "question": one open question to write about next.
