@@ -37,35 +37,32 @@ export type Lesson = {
   updatedAt: number;
 };
 
-export type ReflectResult = { mirror: string; question: string; steps: string[] };
+export type Dated = { text: string; days: string[] };
 
-export type NextTimeResult = {
-  happened: string;
-  didWell: string | null;
+/** Same shape as functions/src/prompts.ts AnalysisResult. */
+export type AnalysisResult = {
+  overview: string;
+  gives: Dated[];
+  takes: Dated[];
+  patterns: Dated[];
+  wins: Dated[];
+  story: { story: string; against: Dated[]; truer: string } | null;
   steps: string[];
-  helpedBefore: { day: string; text: string }[];
-};
-
-export type StoryResult = {
-  story: string;
-  against: { day: string; text: string }[];
-  kinder: string;
+  helpedBefore: Dated[];
   question: string;
 };
 
-export type ThenNowResult = { then: string; now: string | null; question: string };
+export type Range = 'today' | '3d' | '7d' | '30d';
 
-export type LookBackResult = { patterns: { text: string; days: string[] }[]; question: string };
-
-/**
- * users/{uid}/aiNotes/{id} - written by functions/ only, shown under its block.
- * `day` is a review period id ('2026-W40', '2026-10') for lookBack.
- */
-export type AiNote = { id: string; day: string; blockTime: string | null; createdAt: number } & (
-  | { kind: 'reflect'; result: ReflectResult }
-  | { kind: 'nextTime'; result: NextTimeResult }
-  | { kind: 'lookBack'; result: LookBackResult }
-  | { kind: 'story'; result: StoryResult }
-  /** `source`: the old page compared with today. */
-  | { kind: 'onThisDay'; result: ThenNowResult; source: string }
-);
+/** users/{uid}/aiNotes/{id} with kind 'analysis' - written by functions/ only. */
+export type Analysis = {
+  id: string;
+  kind: 'analysis';
+  /** The day it was made ("today" for the range). */
+  day: string;
+  range: Range;
+  from: string;
+  to: string;
+  result: AnalysisResult;
+  createdAt: number;
+};

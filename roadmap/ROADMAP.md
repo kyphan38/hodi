@@ -33,8 +33,9 @@ Bất biến. Agent thực thi không được đổi mà không hỏi.
 10. **Riêng tư.** Tiêu đề tab luôn là "hodi"; làm mờ khi app bị ẩn; sign out xoá cache trên máy.
 11. **iPhone PWA là target chính**; Mac là màn hình thứ hai.
 12. **Tối giản.** Ý mới → ghi vào "Để sau" bên dưới, không tự làm.
-13. **AI là lựa chọn.** Mặc định tắt. Chỉ chạy khi bấm, trừ 1 lần gọi nền mỗi ngày. Kết quả
-    AI lưu riêng (`aiNotes`), không trộn vào text của trang. Chi tiết: `PLAN-ai.md`.
+13. **AI là lựa chọn.** Mặc định tắt. Mọi phân tích nằm ở trang `insight`; Today chỉ để viết
+    (AI chỉ chọn câu hỏi, 1 lần gọi nền mỗi ngày). Kết quả AI lưu riêng (`aiNotes`), không trộn
+    vào text của trang. Chi tiết: `PLAN-ai.md`.
 
 ---
 
@@ -89,6 +90,7 @@ file sinh ra không commit).
 ## Để sau
 
 - Heatmap chọn năm (khi có > 1 năm dữ liệu).
+- AI phân tích 1 năm (tóm tắt từng tháng trước), tự chọn khoảng ngày.
 - Khoá Face ID (passkey).
 
 ## Nhật ký quyết định
@@ -109,3 +111,4 @@ file sinh ra không commit).
 | 2026-10-05 | Today thành từng khối: câu hỏi → viết → `done` → câu tiếp theo; `free write`; khối xong thành danh sách mờ, chạm để sửa; mỗi khối có giờ, bỏ mốc giờ tự động sau 1 tiếng | Chủ app muốn tập trung từng câu và có cảm giác "xong"; giữ một trang chữ thô nên export/search/heatmap không đổi |
 | 2026-10-09 | Chạm heatmap năm → phóng to thành lịch tháng (ô to, có số ngày); chạm ngày → mở trang đó, kể cả ngày trống | Ô 9px không bấm trúng trên iPhone; ngày trống chỉ vào được từ heatmap nên cần dễ bấm để viết bù |
 | 2026-10-09 | Thêm AI (Gemini, AI Studio key) qua Cloud Functions; mặc định tắt; ngôn ngữ trả lời Việt/Anh | Chủ app muốn AI giúp rút kinh nghiệm ("next time"); key không được nằm ở client |
+| 2026-10-09 | AI gom vào trang `insight` (today / 3 / 7 / 30 ngày), bỏ nút AI trong từng khối | Chủ app muốn phân tích cả khoảng ngày; Today giữ là trang chỉ để viết |

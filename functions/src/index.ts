@@ -4,6 +4,8 @@
 // The site stays a static export. Only AI runs here, because the Gemini key
 // must not reach the browser. Every function checks the same email as
 // firestore.rules and reads journal data itself with the Admin SDK.
+// AI analysis lives on the insight page (PLAN-ai A8); Today only gets the
+// day's question from `daily`.
 // ============================================================
 
 import { initializeApp } from 'firebase-admin/app';
@@ -14,41 +16,24 @@ import { logger } from 'firebase-functions';
 import { defineSecret, defineString } from 'firebase-functions/params';
 
 import { isAllowed } from './access.ts';
-import { CONTEXT_DAYS, formatLessons, formatPast, type LessonLite, type PastEntry } from './context.ts';
-import { addDaysId, periodRange } from './dates.ts';
+import { formatLessons, formatPast, type LessonLite, type PastEntry } from './context.ts';
+import { addDaysId, parseRange, rangeDays } from './dates.ts';
 import { embedTexts } from './embed.ts';
 import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
 import {
-  buildDeeperPrompt,
+  ANALYZE_SCHEMA,
+  buildAnalyzePrompt,
   buildIntentionsPrompt,
-  buildLookBackPrompt,
   buildPickPrompt,
-  buildStoryPrompt,
-  buildThenNowPrompt,
-  buildNextTimePrompt,
-  buildReflectPrompt,
-  checkBlock,
   checkCandidates,
-  DEEPER_SCHEMA,
   INTENTIONS_SCHEMA,
-  LOOK_BACK_SCHEMA,
-  NEXT_TIME_SCHEMA,
-  parseDeeper,
+  parseAnalysis,
   parseIntentions,
-  parseLookBack,
   parsePick,
-  parseStory,
-  parseThenNow,
   PICK_SCHEMA,
-  STORY_SCHEMA,
-  THEN_NOW_SCHEMA,
-  parseNextTime,
-  parseReflect,
-  REFLECT_SCHEMA,
-  type BlockInput,
 } from './prompts.ts';
-import { nearest, syncIndex, type Hit } from './search.ts';
+import { nearest, syncIndex } from './search.ts';
 
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 2 });
 initializeApp();
@@ -83,76 +68,6 @@ export const ping = onCall({ secrets: [GEMINI_API_KEY] }, async (req) => {
   }
 });
 
-type Context = { past: string; lessons: string; knownDays: Set<string> };
-
-/** With the search index: full pages this many days back, plus related blocks from before. */
-const RECENT_DAYS = 14;
-const RELATED_BLOCKS = 12;
-
-/** Older blocks close in meaning to `text`, newest-first pages excluded. Empty if no index. */
-async function relatedBefore(user: FirebaseFirestore.DocumentReference, text: string, before: string): Promise<Hit[]> {
-  const [vector] = await embedTexts(GEMINI_API_KEY.value(), [text]);
-  const hits = await nearest(user, vector, RELATED_BLOCKS * 3);
-  return hits.filter((h) => h.day < before).slice(0, RELATED_BLOCKS);
-}
-
-/**
- * Past pages and lessons not archived. With the search index (A7): the last
- * RECENT_DAYS in full plus related older blocks; without it: CONTEXT_DAYS in full.
- */
-async function loadContext(uid: string, day: string, blockText?: string): Promise<Context> {
-  const user = getFirestore().collection('users').doc(uid);
-  const recentFrom = addDaysId(day, -RECENT_DAYS);
-  const related = blockText
-    ? await relatedBefore(user, blockText, recentFrom).catch((err) => {
-        logger.warn('related search failed', err instanceof Error ? err.message : String(err));
-        return [] as Hit[];
-      })
-    : [];
-  const from = related.length ? recentFrom : addDaysId(day, -CONTEXT_DAYS);
-  const [entriesSnap, lessonsSnap] = await Promise.all([
-    user.collection('entries').where('date', '>=', from).where('date', '<', day).get(),
-    user.collection('lessons').where('archived', '==', false).get(),
-  ]);
-  const entries = entriesSnap.docs.map((d) => d.data() as PastEntry);
-  const lessons = lessonsSnap.docs.map((d) => d.data() as LessonLite);
-  const knownDays = new Set([...entries.map((e) => e.date), ...related.map((h) => h.day), ...lessons.map((l) => l.sourceDay)]);
-  let past = formatPast(entries);
-  if (related.length) {
-    const older = related.map((h) => `### ${h.day}${h.time ? ` ${h.time}` : ''}\n${h.text}`).join('\n\n');
-    past = `${past}\n\nRelated moments from older pages:\n${older}`;
-  }
-  return { past, lessons: formatLessons(lessons), knownDays };
-}
-
-type Kind = 'reflect' | 'nextTime' | 'lookBack' | 'story' | 'onThisDay';
-
-/** `day` is a day id, or a review period id for lookBack. */
-async function saveNote(
-  uid: string,
-  day: string,
-  blockTime: string | null,
-  kind: Kind,
-  result: object,
-  extra: Record<string, unknown> = {},
-) {
-  const ref = await getFirestore()
-    .collection('users')
-    .doc(uid)
-    .collection('aiNotes')
-    .add({ day, blockTime, kind, result, createdAt: Date.now(), ...extra });
-  return ref.id;
-}
-
-function readInput(req: CallableRequest): { block: BlockInput; lang: Lang } {
-  const data = (req.data ?? {}) as { block?: unknown; lang?: unknown };
-  try {
-    return { block: checkBlock(data.block), lang: parseLang(data.lang) };
-  } catch {
-    throw new HttpsError('invalid-argument', 'Bad block');
-  }
-}
-
 async function run<T>(name: string, fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
@@ -162,88 +77,6 @@ async function run<T>(name: string, fn: () => Promise<T>): Promise<T> {
     throw new HttpsError('unavailable', 'Model call failed');
   }
 }
-
-/** Says back what they feel + one question. Advice only when the text asks for it. */
-export const reflect = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
-  const uid = guard(req);
-  const { block, lang } = readInput(req);
-  return run('reflect', async () => {
-    const ctx = await loadContext(uid, block.day, block.body);
-    const raw = await generateText(
-      GEMINI_API_KEY.value(),
-      GEMINI_MODEL.value(),
-      buildReflectPrompt(block, ctx.past, ctx.lessons, lang),
-      { temperature: 0.6, timeoutMs: 45_000, jsonSchema: REFLECT_SCHEMA },
-    );
-    const result = parseReflect(raw);
-    const id = await saveNote(uid, block.day, block.time, 'reflect', result);
-    return { id, result };
-  });
-});
-
-/** What happened, what went well, 1-3 steps for next time, what helped before. */
-export const nextTime = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
-  const uid = guard(req);
-  const { block, lang } = readInput(req);
-  return run('nextTime', async () => {
-    const ctx = await loadContext(uid, block.day, block.body);
-    const raw = await generateText(
-      GEMINI_API_KEY.value(),
-      GEMINI_MODEL.value(),
-      buildNextTimePrompt(block, ctx.past, ctx.lessons, lang),
-      { temperature: 0.5, timeoutMs: 45_000, jsonSchema: NEXT_TIME_SCHEMA },
-    );
-    const result = parseNextTime(raw, ctx.knownDays);
-    const id = await saveNote(uid, block.day, block.time, 'nextTime', result);
-    return { id, result };
-  });
-});
-
-/** Weekly / monthly review: 2-3 things that repeat, with their days, and one question. */
-export const lookBack = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 90 }, async (req) => {
-  const uid = guard(req);
-  const data = (req.data ?? {}) as { period?: unknown; lang?: unknown };
-  const period = typeof data.period === 'string' ? data.period : '';
-  const range = periodRange(period);
-  if (!range) throw new HttpsError('invalid-argument', 'Bad period');
-  const lang = parseLang(data.lang);
-
-  const user = getFirestore().collection('users').doc(uid);
-  const [entriesSnap, lessonsSnap] = await Promise.all([
-    user.collection('entries').where('date', '>=', range[0]).where('date', '<=', range[1]).get(),
-    user.collection('lessons').where('archived', '==', false).get(),
-  ]);
-  const entries = entriesSnap.docs.map((d) => d.data() as PastEntry).filter((e) => e.text.trim());
-  if (entries.length === 0) throw new HttpsError('failed-precondition', 'No pages');
-
-  return run('lookBack', async () => {
-    const pages = formatPast(entries, 'oldest');
-    const label = period.includes('W') ? `the week ${range[0]} to ${range[1]}` : `the month ${period}`;
-    const raw = await generateText(
-      GEMINI_API_KEY.value(),
-      GEMINI_MODEL.value(),
-      buildLookBackPrompt(label, pages, formatLessons(lessonsSnap.docs.map((d) => d.data() as LessonLite)), lang),
-      { temperature: 0.4, timeoutMs: 75_000, jsonSchema: LOOK_BACK_SCHEMA },
-    );
-    const result = parseLookBack(raw, new Set(entries.map((e) => e.date)));
-    const id = await saveNote(uid, period, null, 'lookBack', result);
-    return { id, result };
-  });
-});
-
-/** One follow-up question after "done". Not saved: it becomes the next block's question. */
-export const deeper = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 30 }, async (req) => {
-  guard(req);
-  const { block, lang } = readInput(req);
-  return run('deeper', async () => {
-    const raw = await generateText(GEMINI_API_KEY.value(), GEMINI_MODEL.value(), buildDeeperPrompt(block, lang), {
-      temperature: 0.7,
-      timeoutMs: 20_000,
-      jsonSchema: DEEPER_SCHEMA,
-    });
-    return { question: parseDeeper(raw) };
-  });
-});
 
 /** Days of pages read for the daily pick and for finding promises. */
 const DAILY_DAYS = 7;
@@ -386,62 +219,6 @@ export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, a
   return { question, followUp };
 });
 
-/** Tests a harsh story they tell about themselves against their own past pages. */
-export const story = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
-  const uid = guard(req);
-  const { block, lang } = readInput(req);
-  return run('story', async () => {
-    const ctx = await loadContext(uid, block.day, block.body);
-    const raw = await generateText(
-      GEMINI_API_KEY.value(),
-      GEMINI_MODEL.value(),
-      buildStoryPrompt(block, ctx.past, ctx.lessons, lang),
-      { temperature: 0.4, timeoutMs: 45_000, jsonSchema: STORY_SCHEMA },
-    );
-    const result = parseStory(raw, ctx.knownDays);
-    const id = await saveNote(uid, block.day, block.time, 'story', result);
-    return { id, result };
-  });
-});
-
-/** Days of recent pages compared with an "On this day" page. */
-const THEN_NOW_DAYS = 30;
-
-/** "On this day": what was on their mind then, how it looks now. */
-export const onThisDay = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, async (req) => {
-  const uid = guard(req);
-  const data = (req.data ?? {}) as { day?: unknown; then?: unknown; lang?: unknown };
-  const isDay = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
-  if (!isDay(data.day) || !isDay(data.then) || data.then >= data.day) {
-    throw new HttpsError('invalid-argument', 'Bad days');
-  }
-  const day = data.day;
-  const thenDay = data.then;
-  const lang = parseLang(data.lang);
-
-  const user = getFirestore().collection('users').doc(uid);
-  const thenDoc = (await user.collection('entries').doc(thenDay).get()).data() as PastEntry | undefined;
-  if (!thenDoc?.text.trim()) throw new HttpsError('not-found', 'No page');
-
-  return run('onThisDay', async () => {
-    const snap = await user
-      .collection('entries')
-      .where('date', '>=', addDaysId(day, -THEN_NOW_DAYS))
-      .where('date', '<=', day)
-      .get();
-    const recent = formatPast(snap.docs.map((d) => d.data() as PastEntry));
-    const raw = await generateText(
-      GEMINI_API_KEY.value(),
-      GEMINI_MODEL.value(),
-      buildThenNowPrompt(day, thenDay, thenDoc.text, recent, lang),
-      { temperature: 0.4, timeoutMs: 45_000, jsonSchema: THEN_NOW_SCHEMA },
-    );
-    const result = parseThenNow(raw);
-    const id = await saveNote(uid, day, null, 'onThisDay', result, { source: thenDay });
-    return { id, result };
-  });
-});
-
 /** Search by meaning: indexes changed pages first, then the nearest blocks. */
 export const search = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }, async (req) => {
   const uid = guard(req);
@@ -462,3 +239,57 @@ export const search = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
 const SEARCH_LIMIT = 15;
 /** Below this the block is rarely about the query. */
 const SEARCH_MIN_SCORE = 0.45;
+
+/** Older blocks (before the range) sent as "related moments". */
+const RELATED_BLOCKS = 12;
+
+/**
+ * Insight page: reads every page in the range (today, 3, 7 or 30 days) and
+ * returns one analysis, saved to aiNotes (kind 'analysis', `day` = today).
+ */
+export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }, async (req) => {
+  const uid = guard(req);
+  const data = (req.data ?? {}) as { day?: unknown; range?: unknown; lang?: unknown };
+  const range = parseRange(data.range);
+  const day = typeof data.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.day) ? data.day : null;
+  if (!range || !day) throw new HttpsError('invalid-argument', 'Bad range');
+  const lang = parseLang(data.lang);
+  const [from, to] = rangeDays(range, day);
+
+  const user = getFirestore().collection('users').doc(uid);
+  const [entriesSnap, lessonsSnap] = await Promise.all([
+    user.collection('entries').where('date', '>=', from).where('date', '<=', to).get(),
+    user.collection('lessons').where('archived', '==', false).get(),
+  ]);
+  const entries = entriesSnap.docs.map((d) => d.data() as PastEntry).filter((e) => e.text.trim());
+  if (entries.length === 0) throw new HttpsError('failed-precondition', 'No pages');
+  const lessons = lessonsSnap.docs.map((d) => d.data() as LessonLite);
+
+  return run('analyze', async () => {
+    const pages = formatPast(entries, 'oldest');
+    // Older moments close to this range, for "helped before" and the story check.
+    const related = await softly(
+      'related',
+      async () => {
+        const [vector] = await embedTexts(GEMINI_API_KEY.value(), [pages.slice(-6_000)]);
+        const hits = await nearest(user, vector, RELATED_BLOCKS * 3);
+        return hits.filter((h) => h.day < from).slice(0, RELATED_BLOCKS);
+      },
+      [],
+    );
+    const older = related.map((h) => `### ${h.day}${h.time ? ` ${h.time}` : ''}\n${h.text}`).join('\n\n');
+    const label = range === 'today' ? `the day ${day}` : `the days ${from} to ${to}`;
+    const raw = await generateText(
+      GEMINI_API_KEY.value(),
+      GEMINI_MODEL.value(),
+      buildAnalyzePrompt(label, pages, older, formatLessons(lessons), lang),
+      { temperature: 0.4, timeoutMs: 90_000, jsonSchema: ANALYZE_SCHEMA },
+    );
+    const knownDays = new Set([...entries.map((e) => e.date), ...related.map((h) => h.day), ...lessons.map((l) => l.sourceDay)]);
+    const result = parseAnalysis(raw, knownDays);
+    const ref = await user
+      .collection('aiNotes')
+      .add({ kind: 'analysis', day, range, from, to, blockTime: null, result, createdAt: Date.now() });
+    return { id: ref.id, result };
+  });
+});

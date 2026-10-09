@@ -8,11 +8,9 @@ import Heatmap from '@/components/Heatmap';
 import { FOCUS_SEARCH_KEY } from '@/components/Shortcuts';
 import TopBar from '@/components/TopBar';
 import { useJournal } from '@/contexts/JournalContext';
-import { searchByMeaning, type MeaningHit } from '@/lib/ai';
 import { clockStore } from '@/lib/clock';
 import { dayOf, dayShort, dayTiny, monthLabel, weekMonday } from '@/lib/day';
 import { buildTimeline, hasWords, randomDay, search, type TimelineItem } from '@/lib/journal';
-import { aiStore } from '@/lib/prefs';
 import { stringStore } from '@/lib/store';
 
 /** Search box and scroll position live per session: open a day, go back, land in the same spot. */
@@ -125,7 +123,6 @@ export default function DaysView() {
   };
 
   const searching = query.trim() !== '';
-  const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
 
   return (
     <main className="paper pb-[30dvh]">
@@ -164,10 +161,7 @@ export default function DaysView() {
       </div>
 
       {searching ? (
-        <>
-          <SearchResults hits={hits} query={deferredQuery} />
-          {aiOn && <MeaningResults key={query.trim()} query={query.trim()} />}
-        </>
+        <SearchResults hits={hits} query={deferredQuery} />
       ) : !loaded ? null : written.length === 0 && timeline.length === 0 ? (
         <p className="mt-16 text-muted">
           Nothing yet.{' '}
@@ -258,68 +252,5 @@ function SearchResults({ hits, query }: { hits: ReturnType<typeof search>; query
         </li>
       ))}
     </ul>
-  );
-}
-
-/** AI search by meaning: runs only on tap (it costs a call), results below the word matches. */
-function MeaningResults({ query }: { query: string }) {
-  const [state, setState] = useState<'idle' | 'busy' | 'failed' | MeaningHit[]>('idle');
-  const [partial, setPartial] = useState(false);
-  const run = async () => {
-    setState('busy');
-    try {
-      const res = await searchByMeaning(query);
-      setPartial(res.partial);
-      setState(res.hits);
-    } catch (err) {
-      console.warn('[ai] search failed', err);
-      setState('failed');
-    }
-  };
-  const label = 'font-mono text-[11px] tracking-[0.04em] text-faint';
-  if (!Array.isArray(state)) {
-    return (
-      <p className="mt-10">
-        {state === 'busy' ? (
-          <span className={label}>…</span>
-        ) : (
-          <button type="button" onClick={run} className={`${label} py-1 hover:text-ink`}>
-            {state === 'failed' ? 'failed, retry' : 'by meaning'}
-          </button>
-        )}
-      </p>
-    );
-  }
-  return (
-    <section className="mt-12">
-      <h2 className={`${label} mb-2 tracking-[0.1em] uppercase`}>by meaning</h2>
-      {partial && (
-        <p className="mb-2 text-[13px] text-faint">
-          Still reading older pages.{' '}
-          <button type="button" onClick={run} className="underline decoration-line underline-offset-4 hover:text-ink">
-            Search again
-          </button>
-        </p>
-      )}
-      {state.length === 0 ? (
-        <p className="text-faint">Nothing close.</p>
-      ) : (
-        <ul>
-          {state.map((h) => (
-            <li key={`${h.day}-${h.time}-${h.text.slice(0, 20)}`}>
-              <Link href={`/day/?d=${h.day}`} className="group block py-3">
-                <span className="font-mono text-[11px] text-faint">
-                  {dayShort(h.day)} {dayTiny(h.day).split(' ')[1]} {h.day.slice(0, 4)}
-                  {h.time ? ` · ${h.time}` : ''}
-                </span>
-                <span className="mt-1 line-clamp-3 block text-[15px] leading-relaxed text-muted group-hover:text-ink">
-                  {h.text}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }

@@ -4,34 +4,30 @@ import { test } from 'node:test';
 import { parseBlocks } from '@/lib/blocks';
 import { chunkPage, hashText, scoreOf } from '../functions/src/chunks.ts';
 import { CONTEXT_MAX_CHARS, formatLessons, formatPast } from '../functions/src/context.ts';
-import { addDaysId, periodRange } from '../functions/src/dates.ts';
-import { periodDays } from '@/lib/review';
+import { addDaysId, parseRange, rangeDays } from '../functions/src/dates.ts';
 import {
-  buildDeeperPrompt,
+  buildAnalyzePrompt,
   buildIntentionsPrompt,
-  buildLookBackPrompt,
   buildPickPrompt,
-  buildStoryPrompt,
-  buildThenNowPrompt,
   checkCandidates,
-  parseDeeper,
+  parseAnalysis,
   parseIntentions,
   parsePick,
-  parseStory,
-  parseThenNow,
-  buildNextTimePrompt,
-  buildReflectPrompt,
-  checkBlock,
-  parseLookBack,
-  parseNextTime,
-  parseReflect,
 } from '../functions/src/prompts.ts';
-
-const block = { day: '2026-10-09', time: '21:40', question: null, body: 'I snapped at my brother.' };
 
 test('addDaysId crosses months and years', () => {
   assert.equal(addDaysId('2026-10-09', -60), '2026-08-10');
   assert.equal(addDaysId('2026-01-01', -1), '2025-12-31');
+});
+
+test('rangeDays ends today and counts today', () => {
+  assert.deepEqual(rangeDays('today', '2026-10-09'), ['2026-10-09', '2026-10-09']);
+  assert.deepEqual(rangeDays('3d', '2026-10-09'), ['2026-10-07', '2026-10-09']);
+  assert.deepEqual(rangeDays('7d', '2026-10-02'), ['2026-09-26', '2026-10-02']);
+  assert.deepEqual(rangeDays('30d', '2026-10-09'), ['2026-09-10', '2026-10-09']);
+  assert.equal(parseRange('7d'), '7d');
+  assert.equal(parseRange('365d'), null);
+  assert.equal(parseRange(undefined), null);
 });
 
 test('formatPast is newest first, skips empty pages, respects the cap', () => {
@@ -48,51 +44,6 @@ test('formatPast is newest first, skips empty pages, respects the cap', () => {
   assert.ok(!big.includes('2026-10-07'));
 });
 
-test('formatLessons lists day, text and situation', () => {
-  assert.equal(
-    formatLessons([{ text: 'Walk first.', situation: 'Angry at work', sourceDay: '2026-09-12' }]),
-    '- (2026-09-12) Walk first. [when: Angry at work]',
-  );
-});
-
-test('prompts carry the language rule and the block', () => {
-  const vi = buildReflectPrompt(block, '', '', 'vi');
-  assert.match(vi, /Vietnamese/);
-  assert.match(vi, /I snapped at my brother/);
-  assert.match(buildNextTimePrompt(block, '', '', 'en'), /plain English/);
-});
-
-test('parseReflect keeps at most 3 steps and needs a mirror', () => {
-  const r = parseReflect(JSON.stringify({ mirror: ' Tired. ', question: 'Why?', steps: ['a', 'b', 'c', 'd', ''] }));
-  assert.deepEqual(r, { mirror: 'Tired.', question: 'Why?', steps: ['a', 'b', 'c'] });
-  assert.throws(() => parseReflect(JSON.stringify({ mirror: '', question: 'q', steps: [] })));
-});
-
-test('parseNextTime drops made-up days', () => {
-  const r = parseNextTime(
-    JSON.stringify({
-      happened: 'You shouted.',
-      didWell: '',
-      steps: ['Pause ten seconds.'],
-      helpedBefore: [
-        { day: '2026-09-12', text: 'A walk helped.' },
-        { day: '2020-01-01', text: 'Invented.' },
-      ],
-    }),
-    new Set(['2026-09-12']),
-  );
-  assert.equal(r.didWell, null);
-  assert.deepEqual(r.helpedBefore, [{ day: '2026-09-12', text: 'A walk helped.' }]);
-});
-
-test('checkBlock refuses bad input', () => {
-  assert.deepEqual(checkBlock(block), block);
-  assert.throws(() => checkBlock({ ...block, day: 'today' }));
-  assert.throws(() => checkBlock({ ...block, body: '  ' }));
-  assert.throws(() => checkBlock({ ...block, body: 'x'.repeat(9000) }));
-  assert.equal(checkBlock({ ...block, time: 'soon' }).time, null);
-});
-
 test('formatPast can put the oldest page first', () => {
   const out = formatPast(
     [
@@ -104,41 +55,62 @@ test('formatPast can put the oldest page first', () => {
   assert.equal(out, '### 2026-10-01\nold\n\n### 2026-10-08\nnew');
 });
 
-test('periodRange matches the app review periods', () => {
-  for (const p of ['2026-W01', '2026-W40', '2026-W53', '2020-W53', '2026-02', '2024-02', '2026-12']) {
-    const days = periodDays(p);
-    assert.deepEqual(periodRange(p), [days[0], days[days.length - 1]], p);
-  }
-  assert.equal(periodRange('2026-13'), null);
-  assert.equal(periodRange('2026-W00'), null);
-  assert.equal(periodRange('soon'), null);
-});
-
-test('parseLookBack keeps real days only and needs a pattern', () => {
-  const r = parseLookBack(
-    JSON.stringify({
-      patterns: [
-        { text: 'Tired after meetings.', days: ['2026-10-07', '2026-10-05', '2026-10-05', '1999-01-01'] },
-        { text: '', days: [] },
-      ],
-      question: 'What would make next week lighter?',
-    }),
-    new Set(['2026-10-05', '2026-10-07']),
+test('formatLessons lists day, text and situation', () => {
+  assert.equal(
+    formatLessons([{ text: 'Walk first.', situation: 'Angry at work', sourceDay: '2026-09-12' }]),
+    '- (2026-09-12) Walk first. [when: Angry at work]',
   );
-  assert.deepEqual(r.patterns, [{ text: 'Tired after meetings.', days: ['2026-10-05', '2026-10-07'] }]);
-  assert.throws(() => parseLookBack(JSON.stringify({ patterns: [], question: 'q' }), new Set()));
 });
 
-test('look back prompt names the period and the language', () => {
-  const p = buildLookBackPrompt('the month 2026-10', '### 2026-10-01\nhi', '', 'vi');
-  assert.match(p, /the month 2026-10/);
+test('analyze prompt has the range, the pages, older moments and the language', () => {
+  const p = buildAnalyzePrompt('the days 2026-10-07 to 2026-10-09', '### 2026-10-08\nhi', '### 2026-09-01\nold', '', 'vi');
+  assert.match(p, /ANALYZE the days 2026-10-07 to 2026-10-09/);
+  assert.match(p, /### 2026-10-08\nhi/);
+  assert.match(p, /Related moments from older pages:\n### 2026-09-01/);
   assert.match(p, /Vietnamese/);
+  assert.match(buildAnalyzePrompt('the day 2026-10-09', 'x', '', '', 'en'), /older pages: none/);
 });
 
-test('deeper prompt has the block; parseDeeper cleans one line', () => {
-  assert.match(buildDeeperPrompt(block, 'vi'), /I snapped at my brother/);
-  assert.equal(parseDeeper(JSON.stringify({ question: ' What did you\n need then? ' })), 'What did you need then?');
-  assert.throws(() => parseDeeper(JSON.stringify({ question: '' })));
+test('parseAnalysis keeps real days, drops guesses, caps lists', () => {
+  const known = new Set(['2026-10-08', '2026-10-09', '2026-09-01']);
+  const r = parseAnalysis(
+    JSON.stringify({
+      overview: ' A tiring week. ',
+      gives: [{ text: 'Walks', days: ['2026-10-09', '2026-10-08', '2026-10-08', '1999-01-01'] }],
+      takes: [{ text: '', days: [] }],
+      patterns: [1, 2, 3, 4].map((n) => ({ text: `p${n}`, days: [] })),
+      wins: [],
+      story: { story: 'I always fail.', against: [{ text: 'Called mom', days: ['2026-10-08'] }, { text: 'Made up', days: [] }], truer: 'Some days go badly.' },
+      steps: ['a', 'b', 'c', 'd'],
+      helpedBefore: [
+        { text: 'A walk helped', days: ['2026-09-01'] },
+        { text: 'Guess', days: ['2020-01-01'] },
+      ],
+      question: 'What next?',
+    }),
+    known,
+  );
+  assert.equal(r.overview, 'A tiring week.');
+  assert.deepEqual(r.gives, [{ text: 'Walks', days: ['2026-10-08', '2026-10-09'] }]);
+  assert.deepEqual(r.takes, []);
+  assert.equal(r.patterns.length, 3);
+  assert.deepEqual(r.story?.against, [{ text: 'Called mom', days: ['2026-10-08'] }]);
+  assert.deepEqual(r.steps, ['a', 'b', 'c']);
+  assert.deepEqual(r.helpedBefore, [{ text: 'A walk helped', days: ['2026-09-01'] }]);
+});
+
+test('parseAnalysis keeps the newest 4 days of an item', () => {
+  const days = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
+  const base = { overview: 'ok', takes: [], patterns: [], wins: [], story: null, steps: [], helpedBefore: [], question: '' };
+  const r = parseAnalysis(JSON.stringify({ ...base, gives: [{ text: 'Walks', days }] }), new Set(days));
+  assert.deepEqual(r.gives[0].days, days.slice(-4));
+});
+
+test('parseAnalysis: no story is null, empty overview throws', () => {
+  const base = { gives: [], takes: [], patterns: [], wins: [], steps: [], helpedBefore: [], question: '' };
+  assert.equal(parseAnalysis(JSON.stringify({ ...base, overview: 'ok', story: null }), new Set()).story, null);
+  assert.equal(parseAnalysis(JSON.stringify({ ...base, overview: 'ok', story: { story: 'x', against: [], truer: '' } }), new Set()).story, null);
+  assert.throws(() => parseAnalysis(JSON.stringify({ ...base, overview: '', story: null }), new Set()));
 });
 
 test('pick prompt numbers the list; parsePick needs a valid index', () => {
@@ -182,34 +154,6 @@ test('parseIntentions keeps real days and fixes a bad askOn', () => {
     { day: '2026-10-08', text: 'Read', askOn: '2026-10-11', question: 'Did you read?' },
   ]);
   assert.deepEqual(parseIntentions(JSON.stringify({ intentions: 'x' }), known, addDaysId), []);
-});
-
-test('parseStory keeps real evidence days and needs a story and a kinder line', () => {
-  const r = parseStory(
-    JSON.stringify({
-      story: 'I always fail.',
-      against: [
-        { day: '2026-10-07', text: 'You called mom.' },
-        { day: '2001-01-01', text: 'Invented.' },
-      ],
-      kinder: 'Some days go badly; not all of them.',
-      question: 'What went fine this week?',
-    }),
-    new Set(['2026-10-07']),
-  );
-  assert.deepEqual(r.against, [{ day: '2026-10-07', text: 'You called mom.' }]);
-  assert.throws(() => parseStory(JSON.stringify({ story: 'x', against: [], kinder: '', question: '' }), new Set()));
-  assert.match(buildStoryPrompt(block, '', '', 'en'), /CHECK THE STORY/);
-});
-
-test('parseThenNow turns an empty now into null', () => {
-  assert.deepEqual(parseThenNow(JSON.stringify({ then: 'Moving house.', now: '', question: 'How is it?' })), {
-    then: 'Moving house.',
-    now: null,
-    question: 'How is it?',
-  });
-  assert.throws(() => parseThenNow(JSON.stringify({ then: '', now: null, question: '' })));
-  assert.match(buildThenNowPrompt('2026-10-09', '2025-10-09', 'Moving.', '', 'vi'), /Page from 2025-10-09/);
 });
 
 test('chunkPage splits like the app blocks and skips empty ones', () => {
