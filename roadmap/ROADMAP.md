@@ -102,3 +102,4 @@ file sinh ra không commit).
 | 2026-10-05 | Câu hỏi nằm trong trang: dòng `› …`, thêm câu bằng `+ question` | Câu hỏi biến mất khi gõ thì không trả lời được nhiều câu; giữ trong chữ thì đọc lại vẫn thấy câu nào được trả lời |
 | 2026-10-05 | Mốc giờ đổi từ dấu gạch dài sang `· 21:40` | Workspace cấm dấu gạch dài (AGENTS.md) |
 | 2026-10-05 | Today thành từng khối: câu hỏi → viết → `done` → câu tiếp theo; `free write`; khối xong thành danh sách mờ, chạm để sửa; mỗi khối có giờ, bỏ mốc giờ tự động sau 1 tiếng | Chủ app muốn tập trung từng câu và có cảm giác "xong"; giữ một trang chữ thô nên export/search/heatmap không đổi |
+| 2026-10-09 | Chạm heatmap năm → phóng to thành lịch tháng (ô to, có số ngày); chạm ngày → mở trang đó, kể cả ngày trống | Ô 9px không bấm trúng trên iPhone; ngày trống chỉ vào được từ heatmap nên cần dễ bấm để viết bù |

@@ -92,6 +92,13 @@ export function monthOf(id: string): string {
   return id.slice(0, 7);
 }
 
+/** '2026-10' + 1 → '2026-11'. */
+export function addMonths(month: string, n: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const i = y * 12 + (m - 1) + n;
+  return `${Math.floor(i / 12)}-${pad((i % 12) + 1)}`;
+}
+
 /** epoch ms → 'HH:MM' local time. */
 export function timeLabel(ts: number): string {
   const d = new Date(ts);
