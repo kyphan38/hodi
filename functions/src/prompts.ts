@@ -393,3 +393,16 @@ export function analysisText(r: AnalysisResult): string {
     .filter(Boolean)
     .join('\n');
 }
+
+// ---- Month summaries: long ranges are read from these, not from every page ----
+
+export function buildMonthSummaryPrompt(month: string, pages: string): string {
+  return `Summarize one month of someone's private journal (${month}) for a later analysis.
+Write plain English, 150-250 words, facts only, no advice, no judgment.
+Cover: main events, how they felt and how that changed, what gave and took energy, what came back
+more than once, promises they made, things that went well, any harsh story they told about themselves.
+Put the date ("YYYY-MM-DD" exactly as shown) after each fact, for example "(2026-07-14)".
+
+Pages (oldest first):
+${pages}`;
+}

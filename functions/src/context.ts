@@ -4,20 +4,28 @@
 export type PastEntry = { date: string; text: string };
 export type LessonLite = { text: string; situation: string; sourceDay: string };
 
-/** Hard cap so one call stays cheap and fast. */
+/** Default cap so one call stays cheap and fast. */
 export const CONTEXT_MAX_CHARS = 60_000;
+/** Cap when a whole range (up to DIRECT_MAX_DAYS) is read page by page. */
+export const RANGE_MAX_CHARS = 300_000;
+/** Longer ranges are read from month summaries instead of pages. */
+export const DIRECT_MAX_DAYS = 92;
 
 /**
- * Pages cut at CONTEXT_MAX_CHARS (the newest are kept), empty pages skipped.
+ * Pages cut at maxChars (the newest are kept), empty pages skipped.
  * Newest first by default; a review reads better oldest first.
  */
-export function formatPast(entries: PastEntry[], order: 'newest' | 'oldest' = 'newest'): string {
+export function formatPast(
+  entries: PastEntry[],
+  order: 'newest' | 'oldest' = 'newest',
+  maxChars = CONTEXT_MAX_CHARS,
+): string {
   const sorted = [...entries].filter((e) => e.text.trim()).sort((a, b) => (a.date < b.date ? 1 : -1));
   const parts: string[] = [];
   let size = 0;
   for (const e of sorted) {
     const part = `### ${e.date}\n${e.text.trim()}`;
-    if (size + part.length > CONTEXT_MAX_CHARS) break;
+    if (size + part.length > maxChars) break;
     parts.push(part);
     size += part.length + 2;
   }

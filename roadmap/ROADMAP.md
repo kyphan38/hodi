@@ -90,7 +90,6 @@ file sinh ra không commit).
 ## Để sau
 
 - Heatmap chọn năm (khi có > 1 năm dữ liệu).
-- AI phân tích 1 năm (tóm tắt từng tháng trước), tự chọn khoảng ngày.
 - Khoá Face ID (passkey).
 
 ## Nhật ký quyết định

@@ -268,4 +268,12 @@ chuyện ngắn để gỡ rối, lưu ở `users/{uid}/aiChats/{analysisId}` (f
 - Mỗi câu trả lời 1-3 câu, tối đa 1 câu hỏi. Tối đa 12 lượt AI; từ lượt 5 chuyển sang lựa chọn.
 - Chỉ trò chuyện được trong ngày của phân tích. Câu trả lời của bạn không vào nhật ký.
 
-**Để sau:** 1 năm (tóm tắt từng tháng trước rồi phân tích 12 bản tóm tắt); tự chọn ngày.
+## A9 - Khoảng tuỳ chỉnh (2026-10-09)
+
+- Nút `custom` sau `30 days`: số + đơn vị (`days` tối đa 90, `months` tối đa 24, `years` tối
+  đa 5). Range lưu dạng `45d`, `3m`, `1y`; khoảng kết thúc hôm nay, `3m` = từ ngày sau ngày
+  này 3 tháng trước.
+- Đến 92 ngày: AI đọc thẳng mọi trang (giới hạn 300.000 ký tự).
+- Dài hơn: mỗi tháng tóm tắt 1 lần (`users/{uid}/monthSums/{YYYY-MM}`, tiếng Anh, có ngày), chỉ
+  làm lại khi trang trong tháng đổi. Phân tích đọc các bản tóm tắt. 6 tháng: lần đầu ~100 giây,
+  lần sau ~35 giây. `write about this` của khoảng dài cũng dùng các bản tóm tắt này.

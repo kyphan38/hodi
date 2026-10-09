@@ -54,7 +54,8 @@ export type AnalysisResult = {
   question: string;
 };
 
-export type Range = 'today' | '3d' | '7d' | '30d';
+/** 'today' or number + unit: '3d', '3m', '1y' (see lib/ranges). */
+export type Range = string;
 
 /** users/{uid}/aiNotes/{id} with kind 'analysis' - written by functions/ only. */
 export type Analysis = {

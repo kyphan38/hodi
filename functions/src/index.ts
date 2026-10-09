@@ -16,8 +16,8 @@ import { logger } from 'firebase-functions';
 import { defineSecret, defineString } from 'firebase-functions/params';
 
 import { isAllowed } from './access.ts';
-import { formatLessons, formatPast, type LessonLite, type PastEntry } from './context.ts';
-import { addDaysId, parseRange, rangeDays } from './dates.ts';
+import { DIRECT_MAX_DAYS, formatLessons, formatPast, RANGE_MAX_CHARS, type LessonLite, type PastEntry } from './context.ts';
+import { addDaysId, monthsIn, parseRange, rangeDays } from './dates.ts';
 import { embedTexts } from './embed.ts';
 import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
@@ -42,6 +42,7 @@ import {
   PICK_SCHEMA,
 } from './prompts.ts';
 import { nearest, syncIndex } from './search.ts';
+import { monthSummaries, type DatedEntry } from './summaries.ts';
 
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 2 });
 initializeApp();
@@ -248,6 +249,23 @@ const SEARCH_LIMIT = 15;
 /** Below this the block is rarely about the query. */
 const SEARCH_MIN_SCORE = 0.45;
 
+/**
+ * The range as text for AI: every page when it is short, month summaries
+ * when it is longer than DIRECT_MAX_DAYS (a year of pages is too slow and
+ * costly to send each time).
+ */
+async function rangeText(
+  user: FirebaseFirestore.DocumentReference,
+  entries: DatedEntry[],
+  from: string,
+  to: string,
+): Promise<{ text: string; byMonth: boolean }> {
+  const days = (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1;
+  if (days <= DIRECT_MAX_DAYS) return { text: formatPast(entries, 'oldest', RANGE_MAX_CHARS), byMonth: false };
+  const text = await monthSummaries(user, GEMINI_API_KEY.value(), GEMINI_MODEL.value(), monthsIn(from, to), entries);
+  return { text, byMonth: true };
+}
+
 /** Older blocks (before the range) sent as "related moments". */
 const RELATED_BLOCKS = 12;
 
@@ -255,7 +273,7 @@ const RELATED_BLOCKS = 12;
  * Insight page: reads every page in the range (today, 3, 7 or 30 days) and
  * returns one analysis, saved to aiNotes (kind 'analysis', `day` = today).
  */
-export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }, async (req) => {
+export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 300, memory: '512MiB' }, async (req) => {
   const uid = guard(req);
   const data = (req.data ?? {}) as { day?: unknown; range?: unknown; lang?: unknown };
   const range = parseRange(data.range);
@@ -269,12 +287,12 @@ export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }
     user.collection('entries').where('date', '>=', from).where('date', '<=', to).get(),
     user.collection('lessons').where('archived', '==', false).get(),
   ]);
-  const entries = entriesSnap.docs.map((d) => d.data() as PastEntry).filter((e) => e.text.trim());
+  const entries = entriesSnap.docs.map((d) => d.data() as DatedEntry).filter((e) => e.text.trim());
   if (entries.length === 0) throw new HttpsError('failed-precondition', 'No pages');
   const lessons = lessonsSnap.docs.map((d) => d.data() as LessonLite);
 
   return run('analyze', async () => {
-    const pages = formatPast(entries, 'oldest');
+    const { text: pages, byMonth } = await rangeText(user, entries, from, to);
     // Older moments close to this range, for "helped before" and the story check.
     const related = await softly(
       'related',
@@ -286,7 +304,10 @@ export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }
       [],
     );
     const older = related.map((h) => `### ${h.day}${h.time ? ` ${h.time}` : ''}\n${h.text}`).join('\n\n');
-    const label = range === 'today' ? `the day ${day}` : `the days ${from} to ${to}`;
+    const label =
+      range === 'today'
+        ? `the day ${day}`
+        : `the days ${from} to ${to}${byMonth ? ' (read from a summary of each month; the first month may start before the range)' : ''}`;
     const raw = await generateText(
       GEMINI_API_KEY.value(),
       GEMINI_MODEL.value(),
@@ -344,7 +365,8 @@ export const talk = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, as
     user.collection('entries').where('date', '>=', note.from).where('date', '<=', note.to).get(),
     user.collection('lessons').where('archived', '==', false).get(),
   ]);
-  const pages = formatPast(entriesSnap.docs.map((d) => d.data() as PastEntry), 'oldest');
+  // Long ranges reuse the month summaries made by `analyze`.
+  const { text: pages } = await rangeText(user, entriesSnap.docs.map((d) => d.data() as DatedEntry), note.from, note.to);
   const lessons = formatLessons(lessonsSnap.docs.map((d) => d.data() as LessonLite));
   // The opening question counts as reply 1.
   const isLast = messages.filter((m) => m.role === 'ai').length + 1 >= TALK_MAX_REPLIES;

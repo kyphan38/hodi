@@ -14,6 +14,7 @@ import { clockStore } from '@/lib/clock';
 import { dayLong, dayOf, dayShort, dayTiny, isDayId } from '@/lib/day';
 import { getDb } from '@/lib/firebase-client';
 import { keepLesson, updateLesson } from '@/lib/lessons';
+import { makeRange, PRESETS, rangeLabel, splitRange, UNIT_MAX, type Unit } from '@/lib/ranges';
 import type { Analysis, Dated, Lesson, Range, Talk } from '@/types/hodi';
 
 // ============================================================
@@ -28,12 +29,12 @@ import type { Analysis, Dated, Lesson, Range, Talk } from '@/types/hodi';
 const label = 'font-mono text-[11px] tracking-[0.04em] text-faint';
 const link = `${label} py-1 hover:text-ink`;
 
-const RANGES: { value: Range; label: string }[] = [
-  { value: 'today', label: 'today' },
-  { value: '3d', label: '3 days' },
-  { value: '7d', label: '7 days' },
-  { value: '30d', label: '30 days' },
-];
+/** Ranges in the order they were first analyzed that day, newest analysis each. */
+function latestPerRange(list: Analysis[]): Analysis[] {
+  const by = new Map<string, Analysis>();
+  for (const a of list) by.set(a.range, a);
+  return [...by.values()];
+}
 
 export default function InsightView() {
   const uid = useUid();
@@ -42,6 +43,11 @@ export default function InsightView() {
   const [range, setRange] = useState<Range>('today');
   const analyses = useAnalyses(uid);
   const past = useSearchParams().get('d');
+  // The custom chip shows the last custom range used today (or the one just set).
+  const [custom, setCustom] = useState<Range | null>(null);
+  const [picking, setPicking] = useState(false);
+  const todayCustom = analyses.filter((a) => a.day === today && splitRange(a.range) && !PRESETS.includes(a.range as never)).at(-1)?.range;
+  const customRange = custom ?? todayCustom ?? null;
 
   if (isDayId(past) && past !== today) return <PastDay uid={uid} day={past} analyses={analyses} />;
 
@@ -50,19 +56,44 @@ export default function InsightView() {
       <TopBar current="insight" left="insight" />
 
       <div className="mt-10 flex gap-4 text-[15px]" role="radiogroup" aria-label="Range">
-        {RANGES.map((r) => (
+        {PRESETS.map((r) => (
           <button
-            key={r.value}
+            key={r}
             type="button"
             role="radio"
-            aria-checked={r.value === range}
-            onClick={() => setRange(r.value)}
-            className={r.value === range ? 'text-ink' : 'text-faint hover:text-muted'}
+            aria-checked={r === range}
+            onClick={() => {
+              setRange(r);
+              setPicking(false);
+            }}
+            className={r === range ? 'text-ink' : 'text-faint hover:text-muted'}
           >
-            {r.label}
+            {rangeLabel(r)}
           </button>
         ))}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={range === customRange}
+          onClick={() => {
+            if (customRange && range !== customRange) setRange(customRange);
+            else setPicking((p) => !p);
+          }}
+          className={customRange && range === customRange ? 'text-ink' : 'text-faint hover:text-muted'}
+        >
+          {customRange ? rangeLabel(customRange) : 'custom'}
+        </button>
       </div>
+      {picking && (
+        <CustomPicker
+          initial={customRange}
+          onSet={(r) => {
+            setCustom(r);
+            setRange(r);
+            setPicking(false);
+          }}
+        />
+      )}
 
       <RangeAnalysis
         key={range}
@@ -534,12 +565,12 @@ function History({ analyses, today }: { analyses: Analysis[]; today: string }) {
       <p className={label}>history</p>
       <ul className="mt-3">
         {days.slice(0, HISTORY_DAYS).map((d) => {
-          const ranges = RANGES.filter((r) => analyses.some((a) => a.day === d && a.range === r.value));
+          const ranges = latestPerRange(analyses.filter((a) => a.day === d)).map((a) => rangeLabel(a.range));
           return (
             <li key={d}>
               <Link href={`/insight/?d=${d}`} className="group flex items-baseline gap-4 py-1.5">
                 <span className="w-14 shrink-0 text-[13px] whitespace-nowrap text-faint tabular-nums">{dayShort(d)}</span>
-                <span className="text-muted group-hover:text-ink">{ranges.map((r) => r.label).join(' · ')}</span>
+                <span className="text-muted group-hover:text-ink">{ranges.join(' · ')}</span>
               </Link>
             </li>
           );
@@ -553,9 +584,7 @@ const HISTORY_DAYS = 60;
 
 /** A past day: its newest analysis per range, with the talk, read-only. */
 function PastDay({ uid, day, analyses }: { uid: string; day: string; analyses: Analysis[] }) {
-  const list = RANGES.map((r) => analyses.filter((a) => a.day === day && a.range === r.value).at(-1)).filter(
-    (a): a is Analysis => !!a,
-  );
+  const list = latestPerRange(analyses.filter((a) => a.day === day));
   return (
     <main className="paper pb-24">
       <TopBar current="insight" left={<Link href="/insight/">insight</Link>} />
@@ -563,10 +592,63 @@ function PastDay({ uid, day, analyses }: { uid: string; day: string; analyses: A
       {list.length === 0 && <p className="mt-6 text-faint">Nothing on this day.</p>}
       {list.map((a) => (
         <section key={a.id} className="mt-10">
-          <p className={label}>{RANGES.find((r) => r.value === a.range)?.label}</p>
+          <p className={label}>{rangeLabel(a.range)}</p>
           <AnalysisView uid={uid} a={a} />
         </section>
       ))}
     </main>
+  );
+}
+
+// ---- Custom range ----
+
+const UNITS: { value: Unit; label: string }[] = [
+  { value: 'd', label: 'days' },
+  { value: 'm', label: 'months' },
+  { value: 'y', label: 'years' },
+];
+
+/** A number and a unit, e.g. 3 months. Limits match the server (lib/ranges). */
+function CustomPicker({ initial, onSet }: { initial: Range | null; onSet: (r: Range) => void }) {
+  const start = initial ? splitRange(initial) : null;
+  const [n, setN] = useState(String(start?.n ?? 3));
+  const [unit, setUnit] = useState<Unit>(start?.unit ?? 'm');
+  const range = makeRange(Number(n), unit);
+  return (
+    <form
+      className="mt-4 flex flex-wrap items-baseline gap-4 text-[15px]"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (range) onSet(range);
+      }}
+    >
+      <input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={UNIT_MAX[unit]}
+        value={n}
+        onChange={(e) => setN(e.target.value)}
+        aria-label="Number"
+        className="w-14 appearance-none border-b border-line bg-transparent pb-1 text-center focus:border-faint focus-visible:outline-none"
+      />
+      <div className="flex gap-3" role="radiogroup" aria-label="Unit">
+        {UNITS.map((u) => (
+          <button
+            key={u.value}
+            type="button"
+            role="radio"
+            aria-checked={u.value === unit}
+            onClick={() => setUnit(u.value)}
+            className={u.value === unit ? 'text-ink' : 'text-faint hover:text-muted'}
+          >
+            {u.label}
+          </button>
+        ))}
+      </div>
+      <button type="submit" disabled={!range} className={`${link} disabled:opacity-40`}>
+        {range ? 'set' : `max ${UNIT_MAX[unit]}`}
+      </button>
+    </form>
   );
 }
