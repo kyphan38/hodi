@@ -16,6 +16,7 @@ import { defineSecret, defineString } from 'firebase-functions/params';
 import { isAllowed } from './access.ts';
 import { CONTEXT_DAYS, formatLessons, formatPast, type LessonLite, type PastEntry } from './context.ts';
 import { addDaysId, periodRange } from './dates.ts';
+import { embedTexts } from './embed.ts';
 import { generateText } from './gemini.ts';
 import { parseLang, replyLanguageRule, type Lang } from './lang.ts';
 import {
@@ -47,6 +48,7 @@ import {
   REFLECT_SCHEMA,
   type BlockInput,
 } from './prompts.ts';
+import { nearest, syncIndex, type Hit } from './search.ts';
 
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 2 });
 initializeApp();
@@ -83,21 +85,44 @@ export const ping = onCall({ secrets: [GEMINI_API_KEY] }, async (req) => {
 
 type Context = { past: string; lessons: string; knownDays: Set<string> };
 
-/** Past pages (CONTEXT_DAYS before the block's day) and lessons not archived. */
-async function loadContext(uid: string, day: string): Promise<Context> {
+/** With the search index: full pages this many days back, plus related blocks from before. */
+const RECENT_DAYS = 14;
+const RELATED_BLOCKS = 12;
+
+/** Older blocks close in meaning to `text`, newest-first pages excluded. Empty if no index. */
+async function relatedBefore(user: FirebaseFirestore.DocumentReference, text: string, before: string): Promise<Hit[]> {
+  const [vector] = await embedTexts(GEMINI_API_KEY.value(), [text]);
+  const hits = await nearest(user, vector, RELATED_BLOCKS * 3);
+  return hits.filter((h) => h.day < before).slice(0, RELATED_BLOCKS);
+}
+
+/**
+ * Past pages and lessons not archived. With the search index (A7): the last
+ * RECENT_DAYS in full plus related older blocks; without it: CONTEXT_DAYS in full.
+ */
+async function loadContext(uid: string, day: string, blockText?: string): Promise<Context> {
   const user = getFirestore().collection('users').doc(uid);
+  const recentFrom = addDaysId(day, -RECENT_DAYS);
+  const related = blockText
+    ? await relatedBefore(user, blockText, recentFrom).catch((err) => {
+        logger.warn('related search failed', err instanceof Error ? err.message : String(err));
+        return [] as Hit[];
+      })
+    : [];
+  const from = related.length ? recentFrom : addDaysId(day, -CONTEXT_DAYS);
   const [entriesSnap, lessonsSnap] = await Promise.all([
-    user
-      .collection('entries')
-      .where('date', '>=', addDaysId(day, -CONTEXT_DAYS))
-      .where('date', '<', day)
-      .get(),
+    user.collection('entries').where('date', '>=', from).where('date', '<', day).get(),
     user.collection('lessons').where('archived', '==', false).get(),
   ]);
   const entries = entriesSnap.docs.map((d) => d.data() as PastEntry);
   const lessons = lessonsSnap.docs.map((d) => d.data() as LessonLite);
-  const knownDays = new Set([...entries.map((e) => e.date), ...lessons.map((l) => l.sourceDay)]);
-  return { past: formatPast(entries), lessons: formatLessons(lessons), knownDays };
+  const knownDays = new Set([...entries.map((e) => e.date), ...related.map((h) => h.day), ...lessons.map((l) => l.sourceDay)]);
+  let past = formatPast(entries);
+  if (related.length) {
+    const older = related.map((h) => `### ${h.day}${h.time ? ` ${h.time}` : ''}\n${h.text}`).join('\n\n');
+    past = `${past}\n\nRelated moments from older pages:\n${older}`;
+  }
+  return { past, lessons: formatLessons(lessons), knownDays };
 }
 
 type Kind = 'reflect' | 'nextTime' | 'lookBack' | 'story' | 'onThisDay';
@@ -143,7 +168,7 @@ export const reflect = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 },
   const uid = guard(req);
   const { block, lang } = readInput(req);
   return run('reflect', async () => {
-    const ctx = await loadContext(uid, block.day);
+    const ctx = await loadContext(uid, block.day, block.body);
     const raw = await generateText(
       GEMINI_API_KEY.value(),
       GEMINI_MODEL.value(),
@@ -161,7 +186,7 @@ export const nextTime = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }
   const uid = guard(req);
   const { block, lang } = readInput(req);
   return run('nextTime', async () => {
-    const ctx = await loadContext(uid, block.day);
+    const ctx = await loadContext(uid, block.day, block.body);
     const raw = await generateText(
       GEMINI_API_KEY.value(),
       GEMINI_MODEL.value(),
@@ -345,6 +370,9 @@ export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, a
       )
     : null;
 
+  // Keeps the search index fresh with yesterday's writing.
+  await softly('index', () => syncIndex(user, GEMINI_API_KEY.value(), 15_000), false);
+
   // Saved even when empty, so a quiet week does not call again on every open.
   await metaRef.set(
     {
@@ -363,7 +391,7 @@ export const story = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, a
   const uid = guard(req);
   const { block, lang } = readInput(req);
   return run('story', async () => {
-    const ctx = await loadContext(uid, block.day);
+    const ctx = await loadContext(uid, block.day, block.body);
     const raw = await generateText(
       GEMINI_API_KEY.value(),
       GEMINI_MODEL.value(),
@@ -413,3 +441,24 @@ export const onThisDay = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 
     return { id, result };
   });
 });
+
+/** Search by meaning: indexes changed pages first, then the nearest blocks. */
+export const search = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 120 }, async (req) => {
+  const uid = guard(req);
+  const data = (req.data ?? {}) as { query?: unknown };
+  const query = typeof data.query === 'string' ? data.query.trim().slice(0, 500) : '';
+  if (!query) throw new HttpsError('invalid-argument', 'Empty query');
+  const user = getFirestore().collection('users').doc(uid);
+  return run('search', async () => {
+    // The first search builds the index; later ones only catch up. The budget
+    // stays under the client's 60 s wait; `partial` asks the user to try again.
+    const complete = await syncIndex(user, GEMINI_API_KEY.value(), 35_000);
+    const [vector] = await embedTexts(GEMINI_API_KEY.value(), [query]);
+    const hits = await nearest(user, vector, SEARCH_LIMIT);
+    return { hits: hits.filter((h) => h.score >= SEARCH_MIN_SCORE), partial: !complete };
+  });
+});
+
+const SEARCH_LIMIT = 15;
+/** Below this the block is rarely about the query. */
+const SEARCH_MIN_SCORE = 0.45;
