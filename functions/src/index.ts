@@ -49,7 +49,7 @@ initializeApp();
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const ALLOWED_USER_EMAIL = defineString('ALLOWED_USER_EMAIL');
-const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: 'gemini-3.8-flash' });
+const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: 'gemini-4-argon' });
 
 function guard(req: CallableRequest): string {
   if (!req.auth || !isAllowed(req.auth.token, ALLOWED_USER_EMAIL.value())) {

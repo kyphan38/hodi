@@ -100,7 +100,7 @@ hodi là static export (`output: 'export'`), không có API route. Đề xuất:
   - Callable tự kiểm Firebase Auth; thêm kiểm email như `firestore.rules`.
   - Function tự đọc Firestore bằng Admin SDK, nên client chỉ gửi `day` + chỉ số khối,
     không gửi cả nhật ký qua mạng.
-  - Gọi Gemini bằng key AI Studio (SDK `@google/genai`, model `gemini-3.8-flash` như cogi).
+  - Gọi Gemini bằng key AI Studio (SDK `@google/genai`, model `gemini-4-argon` như cogi).
     Key nằm trong Secret Manager (`GEMINI_API_KEY`); emulator đọc `functions/.secret.local`.
   - Email được phép: biến môi trường `ALLOWED_USER_EMAIL` trong `functions/.env` (không commit).
   - Site trên Vercel vẫn static, offline/SW không đổi.
