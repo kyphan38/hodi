@@ -165,7 +165,7 @@ export default function DaysView() {
       ) : !loaded ? null : written.length === 0 && timeline.length === 0 ? (
         <p className="mt-16 text-muted">
           Nothing yet.{' '}
-          <Link href="/" className="text-ink underline decoration-line underline-offset-4 hover:decoration-faint">
+          <Link href="/" className="font-medium text-ink hover:text-muted">
             Today is a good page to start.
           </Link>
         </p>

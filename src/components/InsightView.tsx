@@ -370,7 +370,7 @@ function MeaningSearch() {
           {state.partial && (
             <p className="mt-4 text-[13px] text-faint">
               Still reading older pages.{' '}
-              <button type="button" onClick={run} className="underline decoration-line underline-offset-4 hover:text-ink">
+              <button type="button" onClick={run} className="font-medium text-ink">
                 Search again
               </button>
             </p>
