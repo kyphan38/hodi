@@ -70,6 +70,9 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     useSyncExternalStore(questionsStore.subscribe, questionsStore.get, questionsStore.getServer) === 'on';
   const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
   const [skip, setSkip] = useState(0);
+  // True once a question was moved on (done, another, a question). Only then does a
+  // new question fade in: the first one, when the app opens, is simply there.
+  const [moved, setMoved] = useState(false);
   const [freeWrite, setFreeWrite] = useState(false);
   // The open block. null = nothing written in the new block yet (showing the prompt question).
   const [editing, setEditing] = useState<number | null>(null);
@@ -117,6 +120,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   /** "done": close the block (drop it if empty), the next question appears. */
   const done = () => {
     if (editing === null) return;
+    setMoved(true);
     const kept = blocks.filter((b, i) => i !== editing || b.body.trim() !== '');
     if (kept.length !== blocks.length) write(kept);
     setEditing(null);
@@ -223,12 +227,20 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
             onChange={onActiveChange}
             onKeyDown={onKeyDown}
             onDone={composing ? undefined : done}
+            fadeQuestion={moved}
             links={
               composing ? (
                 <p className="flex gap-2">
                   {activeQuestion ? (
                     <>
-                      <button type="button" onClick={() => setSkip(suggestion.skip + 1)} className={link}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoved(true);
+                          setSkip(suggestion.skip + 1);
+                        }}
+                        className={link}
+                      >
                         another
                       </button>
                       <span className="py-1 text-[11px] text-faint">·</span>
@@ -238,7 +250,14 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
                     </>
                   ) : (
                     questionsOn && (
-                      <button type="button" onClick={() => setFreeWrite(false)} className={link}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoved(true);
+                          setFreeWrite(false);
+                        }}
+                        className={link}
+                      >
                         a question
                       </button>
                     )
@@ -270,6 +289,7 @@ function BlockEditor({
   onKeyDown,
   onDone,
   links,
+  fadeQuestion = false,
 }: {
   block: Block;
   placeholder?: string;
@@ -278,6 +298,8 @@ function BlockEditor({
   onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onDone?: () => void;
   links?: ReactNode;
+  /** A new question fades in (opacity only: the field below must not move). */
+  fadeQuestion?: boolean;
 }) {
   return (
     <div
@@ -286,7 +308,12 @@ function BlockEditor({
         if (e.target === e.currentTarget) textareaRef.current?.focus();
       }}
     >
-      {block.question && <p className="mb-2 text-faint">{block.question}</p>}
+      {block.question && (
+        // Keyed by the question, so a new one is a new element and plays the fade.
+        <p key={block.question} className={`mb-2 text-faint${fadeQuestion ? ' fade-in' : ''}`}>
+          {block.question}
+        </p>
+      )}
       <GrowText
         value={block.body}
         onChange={onChange}

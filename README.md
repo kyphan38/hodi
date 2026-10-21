@@ -160,4 +160,8 @@ blur (`html.veiled`) stays instant. Classes are at the end of
   that arrives while you watch fades in once. What was saved before shows at
   once. A new analysis remounts its view (`key` = analysis id) so it fades in.
 - `src/lib/motion.ts` has `reducedMotion()` (tested); P2 (Today) will use it.
+- Today: after `done`, `another` or `a question`, the next question fades in
+  (opacity only; `moved` in `TodayPage`, the `<p>` is keyed by its text). The
+  first question when the app opens is simply there, and typing never replays
+  it. The textarea is never remounted, so focus and the caret stay.
 
