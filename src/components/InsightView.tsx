@@ -147,7 +147,12 @@ function RangeAnalysis({
   latest: Analysis | undefined;
 }) {
   const [state, setState] = useState<'idle' | 'busy' | 'failed' | 'empty'>('idle');
+  // The analysis on screen when "analyze" was pressed. A different one arriving
+  // after that is new in this visit and fades in; one saved earlier shows at once.
+  const [ran, setRan] = useState<{ before: string | undefined } | null>(null);
+  const fresh = ran !== null && latest !== undefined && latest.id !== ran.before;
   const run = async () => {
+    setRan({ before: latest?.id });
     setState('busy');
     try {
       await analyzeRange(today, range);
@@ -167,7 +172,7 @@ function RangeAnalysis({
     <section className="mt-8">
       <p className="flex items-baseline gap-3">
         {state === 'busy' ? (
-          <span className={label}>reading…</span>
+          <span className={`${label} breathe`}>reading…</span>
         ) : (
           <button type="button" onClick={run} className={link}>
             {latest ? 'analyze again' : 'analyze'}
@@ -177,19 +182,30 @@ function RangeAnalysis({
         {state === 'empty' && <span className={label}>no pages in this range</span>}
         {latest && outdated && state !== 'busy' && <span className={label}>new writing since</span>}
       </p>
-      {latest && <AnalysisView uid={uid} a={latest} live />}
+      {latest && <AnalysisView key={latest.id} uid={uid} a={latest} live fade={fresh} />}
     </section>
   );
 }
 
 /** `live`: today's analysis, the talk can go on. Past ones are read-only. */
-function AnalysisView({ uid, a, live = false }: { uid: string; a: Analysis; live?: boolean }) {
+function AnalysisView({
+  uid,
+  a,
+  live = false,
+  fade = false,
+}: {
+  uid: string;
+  a: Analysis;
+  live?: boolean;
+  /** Just arrived: fade in once. */
+  fade?: boolean;
+}) {
   const r = a.result;
   const talk = useTalk(uid, a.id);
   const [talking, setTalking] = useState(false);
   const showTalk = talking || !!talk;
   return (
-    <article className="mt-4 text-[15px] leading-relaxed">
+    <article className={`mt-4 text-[15px] leading-relaxed${fade ? ' fade-in' : ''}`}>
       <p className={label}>{rangeTitle(a)}</p>
       <p className="mt-1 text-muted">{r.overview}</p>
       <DatedSection title="gives energy" items={r.gives} />
@@ -330,12 +346,16 @@ function Steps({ uid, steps, situation, day }: { uid: string; steps: string[]; s
 function MeaningSearch() {
   const [q, setQ] = useState('');
   const [state, setState] = useState<'idle' | 'busy' | 'failed' | { hits: MeaningHit[]; partial: boolean }>('idle');
+  // Counts the searches that came back, so each result block fades in on its own.
+  const [answers, setAnswers] = useState(0);
   const run = async () => {
     const text = q.trim();
     if (!text) return;
     setState('busy');
     try {
-      setState(await searchByMeaning(text));
+      const found = await searchByMeaning(text);
+      setAnswers((n) => n + 1);
+      setState(found);
     } catch (err) {
       console.warn('[ai] search failed', err);
       setState('failed');
@@ -363,10 +383,10 @@ function MeaningSearch() {
           className="w-full appearance-none border-b border-line bg-transparent pb-2 text-base placeholder:text-faint focus:border-faint focus-visible:outline-none [&::-webkit-search-cancel-button]:appearance-none"
         />
       </form>
-      {state === 'busy' && <p className={`${label} mt-4`}>searching…</p>}
+      {state === 'busy' && <p className={`${label} breathe mt-4`}>searching…</p>}
       {state === 'failed' && <p className={`${label} mt-4`}>failed</p>}
       {typeof state === 'object' && (
-        <>
+        <div key={answers} className="fade-in">
           {state.partial && (
             <p className="mt-4 text-[13px] text-faint">
               Still reading older pages.{' '}
@@ -394,7 +414,7 @@ function MeaningSearch() {
               ))}
             </ul>
           )}
-        </>
+        </div>
       )}
     </section>
   );
@@ -489,6 +509,14 @@ function TalkView({ uid, a, talk, live }: { uid: string; a: Analysis; talk: Talk
   const ref = useRef<HTMLTextAreaElement>(null);
   const messages = talk?.messages ?? [{ role: 'ai' as const, text: a.result.question, at: a.createdAt }];
   const open = live && !talk?.done;
+  // A reply that arrives while you watch fades in. The ones already there, and
+  // your own words, show at once.
+  const [seen, setSeen] = useState(messages.length);
+  const [newFrom, setNewFrom] = useState<number | null>(null);
+  if (messages.length !== seen) {
+    setSeen(messages.length);
+    setNewFrom(messages.length > seen ? seen : null);
+  }
 
   useEffect(() => {
     if (open) ref.current?.focus({ preventScroll: true });
@@ -516,7 +544,7 @@ function TalkView({ uid, a, talk, live }: { uid: string; a: Analysis; talk: Talk
       <p className={label}>talk</p>
       <ul className="mt-2 space-y-4">
         {messages.map((m, i) => (
-          <li key={i}>
+          <li key={i} className={m.role === 'ai' && newFrom !== null && i >= newFrom ? 'fade-in' : undefined}>
             {m.role === 'me' ? (
               <p className="whitespace-pre-wrap text-ink">{m.text}</p>
             ) : (
@@ -534,7 +562,7 @@ function TalkView({ uid, a, talk, live }: { uid: string; a: Analysis; talk: Talk
         {pending && (
           <li>
             <p className="whitespace-pre-wrap text-ink">{pending}</p>
-            <p className={`${label} mt-2`}>…</p>
+            <p className={`${label} breathe mt-2`}>…</p>
           </li>
         )}
       </ul>

@@ -145,3 +145,19 @@ node scripts/seed-emu.mjs <uid>   # a year of sample pages in the EMULATOR only
   deploys whatever old file is on disk.
 - **No service worker in dev.** It registers only in a production build, so test
   offline-open with `npm run build` and a static server on `out/`.
+
+## Motion
+
+Almost none, on purpose (`PLAN-motion.md`, `ws/app/DESIGN.md` "Motion"). Nothing
+moves while you type, when the app opens or when the page changes; the privacy
+blur (`html.veiled`) stays instant. Classes are at the end of
+`src/app/globals.css` (`fade-in`, `breathe`, plus `settle` and `zoom`) with
+`--ease-soft`; the last block turns every animation off under
+`prefers-reduced-motion`.
+
+- Insight: the waiting words (`reading…`, `searching…`, the dots in a talk)
+  slowly fade in and out. An analysis, a set of search results or an AI reply
+  that arrives while you watch fades in once. What was saved before shows at
+  once. A new analysis remounts its view (`key` = analysis id) so it fades in.
+- `src/lib/motion.ts` has `reducedMotion()` (tested); P2 (Today) will use it.
+
