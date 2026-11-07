@@ -39,6 +39,7 @@ export async function monthSummaries(
           text = await generateText(apiKey, model, buildMonthSummaryPrompt(month, formatPast(pages, 'oldest', 200_000)), {
             temperature: 0.2,
             timeoutMs: 60_000,
+            thinking: 'low',
           });
           await ref.set({ month, text, sourceAt, pages: pages.length, createdAt: Date.now() });
         }

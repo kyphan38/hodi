@@ -3,7 +3,7 @@
 //
 //   npm run fn:env
 //
-// functions/.env           ALLOWED_USER_EMAIL + GEMINI_MODEL, deploy and emulator
+// functions/.env           ALLOWED_USER_EMAIL + GEMINI_MODEL(_ANALYZE), deploy and emulator
 // functions/.secret.local  emulator only: GEMINI_API_KEY
 //
 // The emulator uses the same email as `npm run rules -- --emu`, so the fake
@@ -36,7 +36,8 @@ if (!email) {
 
 const lines = [`ALLOWED_USER_EMAIL=${email}`];
 // Always written: non-interactive deploy fails on a param with no value, even with a default.
-lines.push(`GEMINI_MODEL=${(env.GEMINI_MODEL ?? '').trim() || 'gemini-4-argon'}`);
+lines.push(`GEMINI_MODEL=${(env.GEMINI_MODEL ?? '').trim() || 'gemini-3.8-flash'}`);
+lines.push(`GEMINI_MODEL_ANALYZE=${(env.GEMINI_MODEL_ANALYZE ?? '').trim() || 'gemini-4-argon'}`);
 writeFileSync('functions/.env', lines.join('\n') + '\n');
 console.log('functions/.env written');
 

@@ -49,7 +49,10 @@ initializeApp();
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const ALLOWED_USER_EMAIL = defineString('ALLOWED_USER_EMAIL');
-const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: 'gemini-4-argon' });
+// Flash for every call except analyze. In tests Flash high on analyze took
+// over 90 s with 12k thinking tokens; argon took 18 s and read better.
+const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: 'gemini-3.8-flash' });
+const GEMINI_MODEL_ANALYZE = defineString('GEMINI_MODEL_ANALYZE', { default: 'gemini-4-argon' });
 
 function guard(req: CallableRequest): string {
   if (!req.auth || !isAllowed(req.auth.token, ALLOWED_USER_EMAIL.value())) {
@@ -67,7 +70,7 @@ export const ping = onCall({ secrets: [GEMINI_API_KEY] }, async (req) => {
       GEMINI_API_KEY.value(),
       GEMINI_MODEL.value(),
       `Say a short, warm hello to someone opening their journal. One sentence. ${replyLanguageRule(lang)}`,
-      { timeoutMs: 15_000 },
+      { timeoutMs: 15_000, thinking: 'low' },
     );
     return { ok: true, text };
   } catch (err) {
@@ -122,7 +125,7 @@ async function scanIntentions(
     GEMINI_API_KEY.value(),
     GEMINI_MODEL.value(),
     buildIntentionsPrompt(formatPast(pages), open, lang),
-    { temperature: 0.2, timeoutMs: 20_000, jsonSchema: INTENTIONS_SCHEMA },
+    { temperature: 0.2, timeoutMs: 20_000, jsonSchema: INTENTIONS_SCHEMA, thinking: 'low' },
   );
   const found = parseIntentions(raw, new Set(pages.map((p) => p.date)), addDaysId);
   const batch = getFirestore().batch();
@@ -205,6 +208,7 @@ export const daily = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, a
             temperature: 0.3,
             timeoutMs: 20_000,
             jsonSchema: PICK_SCHEMA,
+            thinking: 'low',
           });
           return parsePick(raw, candidates);
         },
@@ -310,7 +314,7 @@ export const analyze = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 300, 
         : `the days ${from} to ${to}${byMonth ? ' (read from a summary of each month; the first month may start before the range)' : ''}`;
     const raw = await generateText(
       GEMINI_API_KEY.value(),
-      GEMINI_MODEL.value(),
+      GEMINI_MODEL_ANALYZE.value(),
       buildAnalyzePrompt(label, pages, older, formatLessons(lessons), lang),
       { temperature: 0.4, timeoutMs: 90_000, jsonSchema: ANALYZE_SCHEMA },
     );
@@ -376,7 +380,7 @@ export const talk = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, as
       GEMINI_API_KEY.value(),
       GEMINI_MODEL.value(),
       buildTalkPrompt(analysisText(note.result!), pages, lessons, messages, lang),
-      { temperature: 0.6, timeoutMs: 45_000, jsonSchema: TALK_SCHEMA },
+      { temperature: 0.6, timeoutMs: 45_000, jsonSchema: TALK_SCHEMA, thinking: 'medium' },
     );
     const answer = parseTalk(raw, isLast);
     messages.push({ role: 'ai', text: answer.reply, ...(answer.steps.length ? { steps: answer.steps } : {}), at: Date.now() });
