@@ -10,6 +10,11 @@ test('the question is fixed per day, "another" changes it', () => {
   assert.ok(QUESTIONS.every((q) => q.length <= 300));
 });
 
+test('the list has no repeats and fits the AI function limit', () => {
+  assert.equal(new Set(QUESTIONS).size, QUESTIONS.length);
+  assert.ok(QUESTIONS.length <= 200);
+});
+
 test('the next question skips ones answered today', () => {
   const day = '2026-10-05';
   const first = questionFor(day, 1);
