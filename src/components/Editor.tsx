@@ -18,9 +18,9 @@ type Props = {
 };
 
 /**
- * Edits a whole raw page (a past day after Edit, a review). The large bottom
- * padding lets the current line scroll above the iPhone keyboard; tapping it
- * focuses the end of the text. Today's page uses blocks (TodayView), not this.
+ * Edits a whole raw page (a review). The large bottom padding lets the current
+ * line scroll above the iPhone keyboard; tapping it focuses the end of the
+ * text. Day pages use blocks (BlockPage in TodayView), not this.
  */
 export default function Editor({ value, onChange, placeholder, loaded, focusOnLoad, label, below }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);

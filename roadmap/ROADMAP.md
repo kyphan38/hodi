@@ -111,3 +111,4 @@ file sinh ra không commit).
 | 2026-10-09 | Chạm heatmap năm → phóng to thành lịch tháng (ô to, có số ngày); chạm ngày → mở trang đó, kể cả ngày trống | Ô 9px không bấm trúng trên iPhone; ngày trống chỉ vào được từ heatmap nên cần dễ bấm để viết bù |
 | 2026-10-09 | Thêm AI (Gemini, AI Studio key) qua Cloud Functions; mặc định tắt; ngôn ngữ trả lời Việt/Anh | Chủ app muốn AI giúp rút kinh nghiệm ("next time"); key không được nằm ở client |
 | 2026-10-09 | AI gom vào trang `insight` (today / 3 / 7 / 30 ngày), bỏ nút AI trong từng khối | Chủ app muốn phân tích cả khoảng ngày; Today giữ là trang chỉ để viết |
+| 2026-11-10 | Ngày cũ khi `edit` cũng viết từng khối, có câu hỏi như Today (không có AI chọn câu); bỏ ô sửa cả trang thô | Chủ app muốn có câu hỏi cả khi viết bù ngày cũ |

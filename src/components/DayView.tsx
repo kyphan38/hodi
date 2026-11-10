@@ -4,19 +4,14 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
-import Editor from '@/components/Editor';
 import ReadText from '@/components/ReadText';
-import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
-import { scrollToTop } from '@/components/TodayView';
+import { BlockPage, scrollToTop } from '@/components/TodayView';
 import { useUid } from '@/components/AuthGate';
 import { useJournal } from '@/contexts/JournalContext';
-import { usePage } from '@/hooks/usePage';
-import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { clockStore } from '@/lib/clock';
-import { countWords, dayLabel, dayOf, dayTiny, isDayId } from '@/lib/day';
+import { dayLabel, dayOf, dayTiny, isDayId } from '@/lib/day';
 import { hasWords } from '@/lib/journal';
-import { entryKey } from '@/lib/page-data';
 import { askedIn } from '@/lib/questions';
 import type { Entry } from '@/types/hodi';
 
@@ -179,36 +174,10 @@ function PastDay({ day, query }: { day: string; query: string | null }) {
 
 function DayEditor({ day, onDone }: { day: string; onDone: () => void }) {
   const uid = useUid();
-  const page = usePage(uid, entryKey(day));
-  const [flash, setFlash] = useState(0);
-
-  useSaveShortcut(() => {
-    page.flush();
-    setFlash((n) => n + 1);
-  });
-
+  // The padding lets the field scroll above the iPhone keyboard.
   return (
-    <div className="mt-8">
-      <Editor
-        value={page.text}
-        onChange={page.setText}
-        loaded={page.loaded}
-        focusOnLoad
-        label={`Page for ${dayLabel(day)}`}
-        below={
-          <button
-            type="button"
-            onClick={() => {
-              page.flush();
-              onDone();
-            }}
-            className="mt-6 py-1 font-mono text-[11px] text-faint hover:text-ink"
-          >
-            done
-          </button>
-        }
-      />
-      <StatusDot status={page.status} words={countWords(page.text)} flash={flash} />
+    <div className="pb-[45dvh]">
+      <BlockPage uid={uid} day={day} onClose={onDone} />
     </div>
   );
 }

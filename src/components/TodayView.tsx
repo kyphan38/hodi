@@ -66,6 +66,42 @@ export default function TodayView() {
 }
 
 function TodayPage({ uid, day }: { uid: string; day: string }) {
+  return (
+    <main className="paper">
+      <TopBar
+        current="today"
+        left={
+          <button type="button" onClick={scrollToTop} className="py-2 uppercase">
+            {dayLabel(day)}
+          </button>
+        }
+      />
+      <BlockPage uid={uid} day={day} ai />
+      <div className="mt-14 space-y-6 pb-[40dvh] empty:hidden">
+        <ReviewInvites today={day} />
+        <OnThisDay today={day} />
+      </div>
+    </main>
+  );
+}
+
+/**
+ * Writes one day as blocks: question, text, "done", next question. Used by
+ * today's page and by past days after "edit". The caller remounts it per day.
+ */
+export function BlockPage({
+  uid,
+  day,
+  ai = false,
+  onClose,
+}: {
+  uid: string;
+  day: string;
+  /** Let AI pick questions. Only today: AI reads the days before the page. */
+  ai?: boolean;
+  /** Shows "done" on the empty new block, to leave the writing view. */
+  onClose?: () => void;
+}) {
   const questionsOn =
     useSyncExternalStore(questionsStore.subscribe, questionsStore.get, questionsStore.getServer) === 'on';
   const aiOn = useSyncExternalStore(aiStore.subscribe, aiStore.get, aiStore.getServer) === 'on';
@@ -91,7 +127,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
 
   // Prompt: the next question not answered today. "another" moves one on.
   // AI (PLAN-ai #6, #8): a follow-up on a promise, then the day's picked question.
-  const picks = useDailyQuestions(uid, day, aiOn && questionsOn);
+  const picks = useDailyQuestions(uid, day, ai && aiOn && questionsOn);
   const suggestion = nextQuestion(day, answered(blocks), skip, picks);
   const composing = editing === null;
   const activeQuestion = composing ? (questionsOn && !freeWrite ? suggestion.question : null) : blocks[editing]?.question;
@@ -129,6 +165,13 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
     setFocusAsk((n) => n + 1);
   };
 
+  const close =
+    onClose &&
+    (() => {
+      page.flush();
+      onClose();
+    });
+
   // Focus once the field is in the page (reopening an old block, or just after "done").
   const [focusAsk, setFocusAsk] = useState(0);
   useEffect(() => {
@@ -165,16 +208,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
   const activeBody = composing ? '' : (blocks[editing]?.body ?? '');
 
   return (
-    <main className="paper">
-      <TopBar
-        current="today"
-        left={
-          <button type="button" onClick={scrollToTop} className="py-2 uppercase">
-            {dayLabel(day)}
-          </button>
-        }
-      />
-
+    <>
       {blocks.length > 0 && (
         <ol className="mt-8 space-y-1">
           {blocks.map((b, i) => {
@@ -226,7 +260,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
             textareaRef={activeRef}
             onChange={onActiveChange}
             onKeyDown={onKeyDown}
-            onDone={composing ? undefined : done}
+            onDone={composing ? close : done}
             fadeQuestion={moved}
             links={
               composing ? (
@@ -271,12 +305,8 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
 
       {needsSupport(page.text) && <SupportLine />}
 
-      <div className="mt-14 space-y-6 pb-[40dvh] empty:hidden">
-        <ReviewInvites today={day} />
-        <OnThisDay today={day} />
-      </div>
       <StatusDot status={page.status} words={countWords(page.text)} flash={flash} />
-    </main>
+    </>
   );
 }
 
