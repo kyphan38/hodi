@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { QUESTIONS, askedIn, nextQuestion, questionFor } from '@/lib/questions';
+import { AI_MAX, QUESTIONS, aiCandidates, askedIn, nextQuestion, questionFor } from '@/lib/questions';
 
 test('the question is fixed per day, "another" changes it', () => {
   assert.equal(questionFor('2026-10-05'), questionFor('2026-10-05'));
@@ -10,9 +10,15 @@ test('the question is fixed per day, "another" changes it', () => {
   assert.ok(QUESTIONS.every((q) => q.length <= 300));
 });
 
-test('the list has no repeats and fits the AI function limit', () => {
+test('the list has no repeats', () => {
   assert.equal(new Set(QUESTIONS).size, QUESTIONS.length);
-  assert.ok(QUESTIONS.length <= 200);
+});
+
+test('AI gets at most 200 questions, the same set all day', () => {
+  const a = aiCandidates('2026-10-05');
+  assert.equal(a.length, Math.min(QUESTIONS.length, AI_MAX));
+  assert.equal(new Set(a).size, a.length);
+  assert.deepEqual(aiCandidates('2026-10-05'), a);
 });
 
 test('the next question skips ones answered today', () => {

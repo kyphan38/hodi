@@ -8,8 +8,8 @@
 //
 // Short prompts, easy English: questions, lists ("List three ...") and
 // sentences to finish. Add or remove freely; order does not matter because
-// the day's question is picked by a hash of the date. Keep 200 at most: the
-// AI function `daily` rejects a longer list.
+// the day's question is picked by a hash of the date. The AI function `daily`
+// takes 200 questions at most, so it gets a window of the list (aiCandidates).
 // ============================================================
 
 import { QUESTION_RE } from '@/lib/day';
@@ -230,6 +230,121 @@ export const QUESTIONS: readonly string[] = [
   'What small thing did you fix this week?',
   'Where do you feel most at home?',
   'List what you want more of and less of next week.',
+  // work
+  'What did you do at work today that you are proud of?',
+  'What problem at work is still on your mind?',
+  'Who at work made your day easier?',
+  'Who at work is hard for you, and why?',
+  'What did you say yes to at work that you should have said no to?',
+  'What would you change about your job if you could?',
+  'When did you feel in flow at work today?',
+  'What are you avoiding at work?',
+  'What feedback did you get lately, and what is true in it?',
+  'What do you want your boss to know?',
+  'What part of your work would you do even without pay?',
+  'Where do you want to be in your work in three years?',
+  'What did you learn at work this week?',
+  'What meeting or task felt like a waste of time?',
+  'How did you take care of yourself during work today?',
+  'Right now, do you work to live, or live to work?',
+  'What is one task you can hand off or drop?',
+  'What would make tomorrow at work easier?',
+  'What are you good at that your work does not use?',
+  'List three wins at work this week, big or small.',
+  'Finish this sentence: At work, I wish I could ...',
+  // family
+  'Who in your family did you think about today?',
+  'When did you last call your parents, and how did it feel?',
+  'What do you love most about your family?',
+  'What is hard about your family right now?',
+  'What did your parents give up for you?',
+  'What habit did you get from your mother or father?',
+  'What family moment do you want to remember forever?',
+  'What do you wish your family understood about you?',
+  'What old family hurt are you still carrying?',
+  'How are you like your parents, and how are you different?',
+  'What can you do this week for someone in your family?',
+  'What family tradition do you want to keep?',
+  'What would you like to ask your grandparents?',
+  'What do you need to forgive in your family?',
+  'What did home feel like when you were a child?',
+  'What kind of family do you want to build?',
+  'What do you share with your brothers, sisters or cousins?',
+  'What did you argue about at home lately, and what was under it?',
+  'List three things your family did for you this year.',
+  'Finish this sentence: To my family, I want to say ...',
+  // friends
+  'Which friend made you laugh the most this year?',
+  'Which friend could you call at 2 a.m.?',
+  'What kind of friend have you been lately?',
+  'Which friendship gives you energy, and which one takes it?',
+  'Which friend have you lost touch with, and why?',
+  'What did a friend teach you without knowing it?',
+  'Who do you want to be closer friends with?',
+  'When did a friend show up for you?',
+  'When did you show up for a friend?',
+  'What do you hide from your friends?',
+  'Which friendship has changed, and how do you feel about it?',
+  'What would you like to do with friends this month?',
+  'Which friend do you envy, and what does it show you?',
+  'What makes a good friend, for you?',
+  'What memory with a friend still makes you smile?',
+  'Do you feel more like yourself with old friends or new ones?',
+  'List your closest friends, and one thing you love about each.',
+  'Finish this sentence: A friend I miss is ...',
+  // society and the world
+  'What news stayed with you today?',
+  'What in the world worries you right now?',
+  'What in the world gives you hope right now?',
+  'What kindness from a stranger did you see lately?',
+  'How did you help someone you do not know?',
+  'What problem in your city do you care about?',
+  'What do you think is unfair in society?',
+  'Where do you feel you belong?',
+  'What community are you part of, and what does it give you?',
+  'What do you believe that most people around you do not?',
+  'How does social media make you feel lately?',
+  'What would you change in your country if you could?',
+  'What did you learn from someone very different from you?',
+  'What small thing can you do for your neighborhood?',
+  'Who do you look up to in public life, and why?',
+  'When did you follow the crowd when you did not want to?',
+  'What kind of world do you want to leave behind?',
+  'Finish this sentence: The world needs more ...',
+  // love
+  'What do you need from a partner that you rarely say?',
+  'When did you last feel close to someone you love?',
+  'What does love look like in small daily things?',
+  'What did you learn from your past relationships?',
+  'What are you afraid of in love?',
+  'How do you like to be loved?',
+  'What fight keeps coming back, and what is it really about?',
+  'What do you want love to feel like?',
+  'What do you give in love, and what do you hope to get?',
+  'What part of you do you hide from someone you love?',
+  'Finish this sentence: I feel loved when ...',
+  // money
+  'What did money make easy or hard this week?',
+  'What do you buy to feel better?',
+  'How much money would be enough for you, and why?',
+  'What did your family teach you about money?',
+  'What money habit do you want to change?',
+  'What would you save for if you could save more?',
+  'What is worth paying more for in your life?',
+  'What spending do you regret this month?',
+  'How do you feel when you check your bank account?',
+  'List what you spend on that truly makes you happy.',
+  // learning and growth
+  'What are you curious to learn next?',
+  'What did you get better at this month?',
+  'What book, video or talk changed how you think lately?',
+  'What habit are you building, and how is it going?',
+  'What did you fail at, and what did it teach you?',
+  'Who do you want to learn from?',
+  'What skill would change your life if you learned it?',
+  'What did you stop doing that made life better?',
+  'What are you practicing, even when it is boring?',
+  'Finish this sentence: This month, I learned that ...',
 ];
 
 /** Simple string hash (FNV-1a 32-bit) - spreads evenly, same day same question. */
@@ -240,6 +355,17 @@ function hash(s: string): number {
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
+}
+
+/** Most questions the AI function `daily` accepts (checkCandidates). */
+export const AI_MAX = 200;
+
+/** The questions sent to AI for a day: 200 in a row, from a spot set by the date. */
+export function aiCandidates(day: string): readonly string[] {
+  const n = QUESTIONS.length;
+  if (n <= AI_MAX) return QUESTIONS;
+  const start = hash(day) % n;
+  return Array.from({ length: AI_MAX }, (_, i) => QUESTIONS[(start + i) % n]);
 }
 
 /** The question for a day. `skip` goes up each time "another" is pressed. */

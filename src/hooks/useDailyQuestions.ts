@@ -5,7 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 import { dailyQuestion } from '@/lib/ai';
 import { getDb } from '@/lib/firebase-client';
-import { QUESTIONS } from '@/lib/questions';
+import { aiCandidates } from '@/lib/questions';
 
 type Cached = { day: string; text: string } | null | undefined;
 
@@ -31,12 +31,12 @@ export function useDailyQuestions(uid: string, day: string, enabled: boolean): s
         if (meta?.questionFor?.day === day) {
           list = [meta.followUpFor?.day === day ? meta.followUpFor.text : null, meta.questionFor.text];
         } else {
-          let res = await dailyQuestion(day, QUESTIONS);
+          let res = await dailyQuestion(day, aiCandidates(day));
           // Another open is running it right now: ask again once it is done.
           if (res.busy) {
             await new Promise((r) => setTimeout(r, BUSY_RETRY_MS));
             if (!alive) return;
-            res = await dailyQuestion(day, QUESTIONS);
+            res = await dailyQuestion(day, aiCandidates(day));
           }
           list = [res.followUp, res.question];
         }
