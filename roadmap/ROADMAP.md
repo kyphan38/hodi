@@ -90,7 +90,7 @@ file sinh ra không commit).
 ## Để sau
 
 - Heatmap chọn năm (khi có > 1 năm dữ liệu).
-- Khoá Face ID (passkey).
+- ~~Khoá Face ID (passkey).~~ Đã làm 2026-11-15: Settings → Face ID lock, hỏi lại khi rời app quá 5 phút, theo từng thiết bị.
 
 ## Nhật ký quyết định
 

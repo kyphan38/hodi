@@ -8,6 +8,7 @@ import { useJournal } from '@/contexts/JournalContext';
 import { pingAi } from '@/lib/ai';
 import { dayOf } from '@/lib/day';
 import { buildMarkdown, exportFilename } from '@/lib/export';
+import { lockCredStore, lockSupported, setUpLock, turnOffLock } from '@/lib/lock';
 import {
   aiLangStore,
   aiStore,
@@ -80,6 +81,47 @@ function save(blob: Blob, filename: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Face ID lock for this device. Hidden where passkeys are not available. */
+function LockRow() {
+  const { user } = useAuth();
+  const credId = useStore(lockCredStore);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const supported = useSyncExternalStore(
+    () => () => {},
+    lockSupported,
+    () => false,
+  );
+  if (!supported || !user) return null;
+
+  const setUp = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await setUpLock(user.uid, user.email ?? '');
+    } catch (err) {
+      console.warn('[settings] lock set up', err);
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Row label="Face ID lock">
+      {credId ? (
+        <button type="button" onClick={turnOffLock} className="text-faint hover:text-ink">
+          on · turn off
+        </button>
+      ) : (
+        <button type="button" disabled={busy} onClick={() => void setUp()} className="text-faint hover:text-ink disabled:opacity-40">
+          {failed ? 'not set up · try again' : 'set up'}
+        </button>
+      )}
+    </Row>
+  );
 }
 
 export default function SettingsView() {
@@ -173,6 +215,7 @@ export default function SettingsView() {
       </section>
 
       <section className="mt-10 text-[15px]">
+        <LockRow />
         <Row label="Your journal">
           <button
             type="button"
