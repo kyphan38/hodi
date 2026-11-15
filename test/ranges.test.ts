@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { makeRange, rangeLabel, splitRange } from '@/lib/ranges';
+import { latestPerRange, makeRange, rangeLabel, splitRange } from '@/lib/ranges';
 import { monthsIn, parseRange, rangeDays } from '../functions/src/dates.ts';
 
 test('rangeLabel reads like the chips', () => {
@@ -34,4 +34,14 @@ test('month and year ranges end today and start the day after', () => {
 test('monthsIn lists every touched month across years', () => {
   assert.deepEqual(monthsIn('2025-11-20', '2026-02-03'), ['2025-11', '2025-12', '2026-01', '2026-02']);
   assert.deepEqual(monthsIn('2026-10-01', '2026-10-09'), ['2026-10']);
+});
+
+test('latestPerRange keeps first-seen order and the newest analysis per range', () => {
+  const list = [
+    { id: 'a', range: '7d' },
+    { id: 'b', range: 'today' },
+    { id: 'c', range: '7d' },
+  ];
+  assert.deepEqual(latestPerRange(list).map((a) => a.id), ['c', 'b']);
+  assert.deepEqual(latestPerRange([]), []);
 });

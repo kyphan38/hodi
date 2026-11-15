@@ -26,3 +26,10 @@ export function rangeLabel(range: string): string {
   const [one, many] = UNIT_NAME[r.unit];
   return `${r.n} ${r.n === 1 ? one : many}`;
 }
+
+/** Ranges in the order they were first analyzed that day, newest analysis each. */
+export function latestPerRange<T extends { range: string }>(list: T[]): T[] {
+  const by = new Map<string, T>();
+  for (const a of list) by.set(a.range, a);
+  return [...by.values()];
+}

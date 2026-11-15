@@ -3,18 +3,17 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 
 import GrowText from '@/components/GrowText';
 import TopBar from '@/components/TopBar';
 import { useUid } from '@/components/AuthGate';
 import { useJournal } from '@/contexts/JournalContext';
+import { useAnalyses, useTalk } from '@/hooks/useInsight';
 import { analyzeRange, searchByMeaning, talkAbout, type MeaningHit } from '@/lib/ai';
 import { clockStore } from '@/lib/clock';
 import { dayLong, dayOf, dayShort, dayTiny, isDayId } from '@/lib/day';
-import { getDb } from '@/lib/firebase-client';
 import { keepLesson, updateLesson } from '@/lib/lessons';
-import { makeRange, PRESETS, rangeLabel, splitRange, UNIT_MAX, type Unit } from '@/lib/ranges';
+import { latestPerRange, makeRange, PRESETS, rangeLabel, splitRange, UNIT_MAX, type Unit } from '@/lib/ranges';
 import type { Analysis, Dated, Lesson, Range, Talk } from '@/types/hodi';
 
 // ============================================================
@@ -28,13 +27,6 @@ import type { Analysis, Dated, Lesson, Range, Talk } from '@/types/hodi';
 
 const label = 'font-mono text-[11px] tracking-[0.04em] text-faint';
 const link = `${label} py-1 hover:text-ink`;
-
-/** Ranges in the order they were first analyzed that day, newest analysis each. */
-function latestPerRange(list: Analysis[]): Analysis[] {
-  const by = new Map<string, Analysis>();
-  for (const a of list) by.set(a.range, a);
-  return [...by.values()];
-}
 
 export default function InsightView() {
   const uid = useUid();
@@ -110,25 +102,6 @@ export default function InsightView() {
       <History analyses={analyses} today={today} />
     </main>
   );
-}
-
-/** All analyses, oldest first. Only a few per day, so one listener is fine. */
-function useAnalyses(uid: string): Analysis[] {
-  const [list, setList] = useState<Analysis[]>([]);
-  useEffect(() => {
-    const q = query(collection(getDb(), 'users', uid, 'aiNotes'), where('kind', '==', 'analysis'));
-    return onSnapshot(
-      q,
-      (snap) =>
-        setList(
-          snap.docs
-            .map((d) => ({ ...(d.data() as Omit<Analysis, 'id'>), id: d.id }))
-            .sort((a, b) => a.createdAt - b.createdAt),
-        ),
-      (err) => console.error('[ai] analyses watch failed', err),
-    );
-  }, [uid]);
-  return list;
 }
 
 function rangeTitle(a: Pick<Analysis, 'from' | 'to'>): string {
@@ -483,20 +456,6 @@ function LessonEditor({ uid, lesson, onClose }: { uid: string; lesson: Lesson; o
 }
 
 // ---- Talk ("write about this") ----
-
-function useTalk(uid: string, analysisId: string): Talk | null {
-  const [talk, setTalk] = useState<Talk | null>(null);
-  useEffect(
-    () =>
-      onSnapshot(
-        doc(getDb(), 'users', uid, 'aiChats', analysisId),
-        (snap) => setTalk(snap.exists() ? ({ ...(snap.data() as Omit<Talk, 'id'>), id: snap.id } as Talk) : null),
-        (err) => console.error('[ai] talk watch failed', err),
-      ),
-    [uid, analysisId],
-  );
-  return talk;
-}
 
 /**
  * A short chat that starts from the analysis question. The function stores
