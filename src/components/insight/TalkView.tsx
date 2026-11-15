@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import GrowText from '@/components/GrowText';
 import Steps from '@/components/insight/Steps';
 import { label, link } from '@/components/insight/styles';
-import { talkAbout } from '@/lib/ai';
+import { talkAbout, failWord } from '@/lib/ai';
 import type { Analysis, Talk } from '@/types/hodi';
 
 /**
@@ -16,6 +16,7 @@ export default function TalkView({ uid, a, talk, live }: { uid: string; a: Analy
   const [text, setText] = useState('');
   const [pending, setPending] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [failText, setFailText] = useState('failed');
   const ref = useRef<HTMLTextAreaElement>(null);
   const messages = talk?.messages ?? [{ role: 'ai' as const, text: a.result.question, at: a.createdAt }];
   const open = live && !talk?.done;
@@ -42,6 +43,7 @@ export default function TalkView({ uid, a, talk, live }: { uid: string; a: Analy
       await talkAbout(a.id, a.day, msg);
     } catch (err) {
       console.warn('[ai] talk failed', err);
+      setFailText(failWord(err));
       setText(msg);
       setFailed(true);
     } finally {
@@ -80,7 +82,7 @@ export default function TalkView({ uid, a, talk, live }: { uid: string; a: Analy
         <div className="page-text mt-4">
           <GrowText value={text} onChange={setText} label="Your answer" placeholder="Write back" textareaRef={ref} />
           <p className="mt-2 flex items-baseline justify-end gap-3">
-            {failed && <span className={label}>failed</span>}
+            {failed && <span className={label}>{failText}</span>}
             <button type="button" disabled={!text.trim()} onClick={send} className={`${link} disabled:opacity-40`}>
               send
             </button>

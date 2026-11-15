@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import TopBar from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJournal } from '@/contexts/JournalContext';
-import { pingAi } from '@/lib/ai';
+import { pingAi, failWord } from '@/lib/ai';
 import { dayOf } from '@/lib/day';
 import { buildMarkdown, exportFilename } from '@/lib/export';
 import { lockCredStore, lockSupported, setUpLock, turnOffLock } from '@/lib/lock';
@@ -249,6 +249,7 @@ export default function SettingsView() {
 /** Calls the ping function once: proves sign-in, the key and the model work. */
 function AiCheck() {
   const [state, setState] = useState<'idle' | 'busy' | 'failed' | string>('idle');
+  const [failText, setFailText] = useState('failed');
   const run = async () => {
     setState('busy');
     try {
@@ -256,6 +257,7 @@ function AiCheck() {
       setState(res.text);
     } catch (err) {
       console.warn('[ai] ping failed', err);
+      setFailText(failWord(err));
       setState('failed');
     }
   };
@@ -269,7 +271,7 @@ function AiCheck() {
           onClick={run}
           className="text-faint hover:text-ink disabled:opacity-40"
         >
-          {state === 'busy' ? '…' : state === 'failed' ? 'failed, retry' : 'check'}
+          {state === 'busy' ? '…' : state === 'failed' ? `${failText}, retry` : 'check'}
         </button>
       </Row>
       {answer && <p className="text-[13px] leading-relaxed text-faint">{state}</p>}

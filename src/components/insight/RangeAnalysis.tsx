@@ -5,7 +5,7 @@ import { useState } from 'react';
 import AnalysisView from '@/components/insight/AnalysisView';
 import { label, link } from '@/components/insight/styles';
 import { useJournal } from '@/contexts/JournalContext';
-import { analyzeRange } from '@/lib/ai';
+import { analyzeRange, failWord } from '@/lib/ai';
 import type { Analysis, Range } from '@/types/hodi';
 
 export default function RangeAnalysis({
@@ -20,6 +20,7 @@ export default function RangeAnalysis({
   latest: Analysis | undefined;
 }) {
   const [state, setState] = useState<'idle' | 'busy' | 'failed' | 'empty'>('idle');
+  const [failText, setFailText] = useState('failed');
   // The analysis on screen when "analyze" was pressed. A different one arriving
   // after that is new in this visit and fades in; one saved earlier shows at once.
   const [ran, setRan] = useState<{ before: string | undefined } | null>(null);
@@ -33,6 +34,7 @@ export default function RangeAnalysis({
     } catch (err) {
       console.warn('[ai] analyze failed', err);
       const code = (err as { code?: string }).code ?? '';
+      setFailText(failWord(err));
       setState(code.endsWith('failed-precondition') ? 'empty' : 'failed');
     }
   };
@@ -51,7 +53,7 @@ export default function RangeAnalysis({
             {latest ? 'analyze again' : 'analyze'}
           </button>
         )}
-        {state === 'failed' && <span className={label}>failed</span>}
+        {state === 'failed' && <span className={label}>{failText}</span>}
         {state === 'empty' && <span className={label}>no pages in this range</span>}
         {latest && outdated && state !== 'busy' && <span className={label}>new writing since</span>}
       </p>

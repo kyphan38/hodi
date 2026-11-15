@@ -49,3 +49,9 @@ export function talkAbout(
 ): Promise<{ reply: string; steps: string[]; done: boolean }> {
   return call('talk', { analysisId, day, text });
 }
+
+/** The word shown when an AI call fails: out of Gemini credit gets its own. */
+export function failWord(err: unknown): string {
+  const code = (err as { code?: string })?.code ?? '';
+  return code.endsWith('resource-exhausted') ? 'no AI credit' : 'failed';
+}

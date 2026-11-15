@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { label } from '@/components/insight/styles';
-import { searchByMeaning, type MeaningHit } from '@/lib/ai';
+import { searchByMeaning, type MeaningHit, failWord } from '@/lib/ai';
 import { dayShort, dayTiny } from '@/lib/day';
 
 export default function MeaningSearch() {
   const [q, setQ] = useState('');
   const [state, setState] = useState<'idle' | 'busy' | 'failed' | { hits: MeaningHit[]; partial: boolean }>('idle');
+  const [failText, setFailText] = useState('failed');
   // Counts the searches that came back, so each result block fades in on its own.
   const [answers, setAnswers] = useState(0);
   const run = async () => {
@@ -22,6 +23,7 @@ export default function MeaningSearch() {
       setState(found);
     } catch (err) {
       console.warn('[ai] search failed', err);
+      setFailText(failWord(err));
       setState('failed');
     }
   };
@@ -48,7 +50,7 @@ export default function MeaningSearch() {
         />
       </form>
       {state === 'busy' && <p className={`${label} breathe mt-4`}>searching…</p>}
-      {state === 'failed' && <p className={`${label} mt-4`}>failed</p>}
+      {state === 'failed' && <p className={`${label} mt-4`}>{failText}</p>}
       {typeof state === 'object' && (
         <div key={answers} className="fade-in">
           {state.partial && (

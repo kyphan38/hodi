@@ -76,9 +76,16 @@ export const ping = onCall({ secrets: [GEMINI_API_KEY] }, async (req) => {
   } catch (err) {
     // Never log journal text; this prompt has none.
     logger.error('ping failed', err);
-    throw new HttpsError('unavailable', 'Model call failed');
+    throw modelError(err);
   }
 });
+
+/** Out of Gemini credit (HTTP 402 / 429) gets its own code so the app can say so (same as legi). */
+function modelError(err: unknown): HttpsError {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/"code":\s*(402|429)|RESOURCE_EXHAUSTED/.test(msg)) return new HttpsError('resource-exhausted', 'Model quota used up');
+  return new HttpsError('unavailable', 'Model call failed');
+}
 
 async function run<T>(name: string, fn: () => Promise<T>): Promise<T> {
   try {
@@ -86,7 +93,7 @@ async function run<T>(name: string, fn: () => Promise<T>): Promise<T> {
   } catch (err) {
     // Log the error only: never journal text.
     logger.error(`${name} failed`, err instanceof Error ? err.message : String(err));
-    throw new HttpsError('unavailable', 'Model call failed');
+    throw modelError(err);
   }
 }
 
