@@ -1,6 +1,6 @@
 # PLAN-refactor (hodi)
 
-Trạng thái: Phase 1 xong (2026-11-15), test 78/78, build OK. Phase 2 chưa làm.
+Trạng thái: Phase 1 và 2 xong (2026-11-15). Test 78/78, build OK. Đã thử /insight trên emulator: range, history, ngày cũ, talk, custom, lesson editor.
 
 Mục tiêu nhỏ: bỏ lệnh gọi Firestore khỏi component, và chia `InsightView.tsx` (682 dòng) thành nhiều file.
 
