@@ -13,6 +13,7 @@ import {
   randomDay,
   reviewEnd,
   search,
+  recentBlankDays,
 } from '@/lib/journal';
 import { countWords } from '@/lib/day';
 import type { Entry, Review } from '@/types/hodi';
@@ -136,4 +137,12 @@ test('search ignores accents, matches every word, highlights the original text',
   );
   assert.equal(search(es, [], '   ').length, 0);
   assert.equal(search([], [review('2026-W40', 'Tuần mệt')], 'met')[0].kind, 'review');
+});
+
+test('recent blank days: the days before today with no words, newest first', () => {
+  const e = (date: string, words: number) => ({ date, words });
+  const entries = [e('2026-11-15', 30), e('2026-11-13', 0), e('2026-11-12', 12), e('2026-11-16', 5)];
+  assert.deepEqual(recentBlankDays(entries, '2026-11-16', 4), ['2026-11-14', '2026-11-13']);
+  assert.deepEqual(recentBlankDays(entries, '2026-11-16', 1), [], 'yesterday was written');
+  assert.deepEqual(recentBlankDays([], '2026-11-01', 2), ['2026-10-31', '2026-10-30']);
 });

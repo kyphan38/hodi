@@ -36,7 +36,15 @@ export default function DayView() {
   if (day === today) return null;
   if (day > today) return <Message day={day} text="Not yet." />;
   // key: a new day rebuilds from scratch (the save hook is tied to one page).
-  return <PastDay key={day} day={day} query={query} />;
+  // It also remounts once the journal loads, so a blank day can open straight in the editor.
+  return <PastDayGate key={day} day={day} query={query} />;
+}
+
+function PastDayGate({ day, query }: { day: string; query: string | null }) {
+  const { entries, loaded } = useJournal();
+  const entry = entries.find((e) => e.date === day);
+  const blank = loaded && (!entry || !entry.text.trim());
+  return <PastDay key={loaded ? 'ready' : 'loading'} day={day} query={query} startEditing={blank} />;
 }
 
 function Message({ day, text }: { day?: string; text: string }) {
@@ -63,12 +71,13 @@ const dayHref = (d: string, today: string) => (d === today ? '/' : `/day/?d=${d}
 const SWIPE_MIN = 60;
 const EDGE = 24;
 
-function PastDay({ day, query }: { day: string; query: string | null }) {
+function PastDay({ day, query, startEditing }: { day: string; query: string | null; startEditing: boolean }) {
   const router = useRouter();
   const { entries, loaded } = useJournal();
   const now = useSyncExternalStore(clockStore.subscribe, clockStore.get, clockStore.getServer);
   const today = dayOf(now);
-  const [editing, setEditing] = useState(false);
+  // A blank day has nothing to read: go straight to writing.
+  const [editing, setEditing] = useState(startEditing);
   const entry = entries.find((e) => e.date === day) ?? null;
   const empty = !entry || !entry.text.trim();
   const { older, newer } = neighbors(entries, day, today);

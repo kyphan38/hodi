@@ -28,6 +28,17 @@ export function hasWords(e: { words: number }): boolean {
   return e.words > 0;
 }
 
+/** Blank days among the `n` days before today, newest first. For writing a missed day. */
+export function recentBlankDays(entries: readonly { date: string; words: number }[], today: string, n = 7): string[] {
+  const written = new Set(entries.filter(hasWords).map((e) => e.date));
+  const out: string[] = [];
+  for (let i = 1; i <= n; i++) {
+    const d = addDays(today, -i);
+    if (!written.has(d)) out.push(d);
+  }
+  return out;
+}
+
 // ---- Timeline ----
 
 export type TimelineItem =
@@ -166,7 +177,7 @@ export function onThisDay(entries: Entry[], today: string): { date: string; year
 }
 
 /** Any written day other than today. `rand` in [0, 1). */
-export function randomDay(entries: Entry[], today: string, rand: number): string | null {
+export function randomDay(entries: Entry[], today: string, rand: number = Math.random()): string | null {
   const pool = entries.filter((e) => e.date !== today && hasWords(e));
   if (pool.length === 0) return null;
   return pool[Math.min(pool.length - 1, Math.floor(rand * pool.length))].date;

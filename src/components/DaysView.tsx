@@ -10,7 +10,7 @@ import TopBar from '@/components/TopBar';
 import { useJournal } from '@/contexts/JournalContext';
 import { clockStore } from '@/lib/clock';
 import { dayOf, dayShort, dayTiny, monthLabel, weekMonday } from '@/lib/day';
-import { buildTimeline, hasWords, randomDay, search, type TimelineItem } from '@/lib/journal';
+import { buildTimeline, hasWords, randomDay, recentBlankDays, search, type TimelineItem } from '@/lib/journal';
 import { stringStore } from '@/lib/store';
 
 /** Search box and scroll position live per session: open a day, go back, land in the same spot. */
@@ -117,8 +117,10 @@ export default function DaysView() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const blankDays = loaded ? recentBlankDays(entries, today) : [];
+
   const goRandom = () => {
-    const d = randomDay(entries, today, Math.random());
+    const d = randomDay(entries, today);
     if (d) router.push(`/day/?d=${d}`);
   };
 
@@ -182,6 +184,19 @@ export default function DaysView() {
                 random day
               </button>
             </p>
+            {blankDays.length > 0 && (
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-[11px] text-faint">
+                <span>blank</span>
+                {blankDays.map((d) => (
+                  <span key={d} className="flex gap-2">
+                    <span>·</span>
+                    <Link href={`/day/?d=${d}`} className="hover:text-ink">
+                      {dayShort(d).toLowerCase()}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
           </section>
 
           {timeline.slice(0, monthsShown).map((m) => (
