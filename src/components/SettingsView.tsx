@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import Link from 'next/link';
 
 import TopBar from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -146,6 +147,14 @@ export default function SettingsView() {
   return (
     <main className="paper pb-24">
       <TopBar current="settings" left="settings" />
+
+      <section className="mt-10 text-[15px]">
+        <Row label="Guide">
+          <Link href="/guide/" className="text-faint hover:text-ink">
+            read
+          </Link>
+        </Row>
+      </section>
 
       <section className="mt-10 text-[15px]">
         <Choice
