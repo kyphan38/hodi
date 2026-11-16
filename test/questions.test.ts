@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AI_MAX, QUESTIONS, aiCandidates, askedIn, nextQuestion, questionFor } from '@/lib/questions';
+import { AI_MAX, BY_TOPIC, QUESTIONS, TOPICS, aiCandidates, askedIn, nextQuestion, questionFor } from '@/lib/questions';
 
 test('the question is fixed per day, "another" changes it', () => {
   assert.equal(questionFor('2026-10-05'), questionFor('2026-10-05'));
@@ -41,4 +41,32 @@ test('AI picks come first in order, then the usual questions', () => {
   assert.deepEqual(nextQuestion(day, new Set(), 1, picks), { question: picks[1], skip: 1 });
   assert.deepEqual(nextQuestion(day, new Set([picks[0]]), 0, picks), { question: picks[1], skip: 1 });
   assert.equal(nextQuestion(day, new Set(), 2, picks).question, questionFor(day, 0));
+});
+
+const topicOf = (q: string) => TOPICS.find((t) => BY_TOPIC[t].includes(q));
+
+test('"another" never asks about the same topic twice in a row', () => {
+  for (const day of ['2026-11-15', '2026-11-16', '2027-01-01']) {
+    for (let skip = 0; skip < 60; skip++) {
+      assert.notEqual(topicOf(questionFor(day, skip)), topicOf(questionFor(day, skip + 1)), `${day} skip ${skip}`);
+    }
+  }
+});
+
+test('a chosen topic only asks from that topic, and skips what was answered', () => {
+  const day = '2026-11-16';
+  for (const t of TOPICS) {
+    for (let skip = 0; skip < 10; skip++) assert.equal(topicOf(questionFor(day, skip, t)), t);
+  }
+  const first = nextQuestion(day, new Set(), 0, ['AI pick'], 'work');
+  assert.equal(topicOf(first.question), 'work', 'a chosen topic replaces the AI picks');
+  const next = nextQuestion(day, new Set([first.question]), 0, [], 'work');
+  assert.notEqual(next.question, first.question);
+  assert.equal(topicOf(next.question), 'work');
+});
+
+test('every question has exactly one of the 7 topics', () => {
+  assert.equal(TOPICS.length, 7);
+  assert.equal(TOPICS.reduce((n, t) => n + BY_TOPIC[t].length, 0), QUESTIONS.length);
+  assert.ok(QUESTIONS.every((q) => topicOf(q)));
 });

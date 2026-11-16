@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   useCallback,
   useEffect,
@@ -23,10 +24,12 @@ import { usePage } from '@/hooks/usePage';
 import { useSaveShortcut } from '@/hooks/useSaveShortcut';
 import { lastInputAt } from '@/lib/activity';
 import { answered, parseBlocks, serializeBlocks, type Block } from '@/lib/blocks';
-import { countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
+import { addDays, countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
 import { aiLangStore, aiStore, questionsStore } from '@/lib/prefs';
-import { nextQuestion } from '@/lib/questions';
+import { TOPICS, nextQuestion, type Topic } from '@/lib/questions';
+import { recentBlankDays } from '@/lib/journal';
+import { useJournal } from '@/contexts/JournalContext';
 import { needsSupport, SUPPORT_LINE } from '@/lib/safety';
 
 /** Left open past 04:00: only move to the new page after a long typing pause. */
@@ -78,6 +81,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
       />
       <BlockPage uid={uid} day={day} ai />
       <div className="mt-14 space-y-6 pb-[40dvh] empty:hidden">
+        <YesterdayInvite today={day} />
         <ReviewInvites today={day} />
         <OnThisDay today={day} />
       </div>
@@ -110,6 +114,9 @@ export function BlockPage({
   // new question fade in: the first one, when the app opens, is simply there.
   const [moved, setMoved] = useState(false);
   const [freeWrite, setFreeWrite] = useState(false);
+  // A chosen topic stays until "any" is picked; null = rotate through all topics.
+  const [topic, setTopic] = useState<Topic | null>(null);
+  const [pickingTopic, setPickingTopic] = useState(false);
   // The open block. null = nothing written in the new block yet (showing the prompt question).
   const [editing, setEditing] = useState<number | null>(null);
   const [flash, setFlash] = useState(0);
@@ -128,7 +135,7 @@ export function BlockPage({
   // Prompt: the next question not answered today. "another" moves one on.
   // AI (PLAN-ai #6, #8): a follow-up on a promise, then the day's picked question.
   const picks = useDailyQuestions(uid, day, ai && aiOn && questionsOn);
-  const suggestion = nextQuestion(day, answered(blocks), skip, picks);
+  const suggestion = nextQuestion(day, answered(blocks), skip, picks, topic);
   const composing = editing === null;
   const activeQuestion = composing ? (questionsOn && !freeWrite ? suggestion.question : null) : blocks[editing]?.question;
 
@@ -264,6 +271,7 @@ export function BlockPage({
             fadeQuestion={moved}
             links={
               composing ? (
+                <>
                 <p className="flex gap-2">
                   {activeQuestion ? (
                     <>
@@ -276,6 +284,15 @@ export function BlockPage({
                         className={link}
                       >
                         another
+                      </button>
+                      <span className="py-1 text-[11px] text-faint">·</span>
+                      <button
+                        type="button"
+                        aria-expanded={pickingTopic}
+                        onClick={() => setPickingTopic((v) => !v)}
+                        className={topic ? link.replace('text-faint', 'text-muted') : link}
+                      >
+                        {topic ?? 'topic'}
                       </button>
                       <span className="py-1 text-[11px] text-faint">·</span>
                       <button type="button" onClick={() => setFreeWrite(true)} className={link}>
@@ -297,6 +314,27 @@ export function BlockPage({
                     )
                   )}
                 </p>
+                {pickingTopic && activeQuestion && (
+                  <p className="flex flex-wrap gap-x-2" role="group" aria-label="Question topic">
+                    {[null, ...TOPICS].map((t) => (
+                      <button
+                        key={t ?? 'any'}
+                        type="button"
+                        aria-pressed={topic === t}
+                        onClick={() => {
+                          setTopic(t);
+                          setSkip(0);
+                          setMoved(true);
+                          setPickingTopic(false);
+                        }}
+                        className={topic === t ? link.replace('text-faint', 'text-ink') : link}
+                      >
+                        {t ?? 'any'}
+                      </button>
+                    ))}
+                  </p>
+                )}
+                </>
               ) : null
             }
           />
@@ -368,4 +406,17 @@ function BlockEditor({
 function SupportLine() {
   const lang = useSyncExternalStore(aiLangStore.subscribe, aiLangStore.get, aiLangStore.getServer);
   return <p className="mt-10 text-[14px] leading-relaxed text-muted">{SUPPORT_LINE[lang]}</p>;
+}
+
+/** A faint link when yesterday's page is blank, in the same place as the review invites. */
+function YesterdayInvite({ today }: { today: string }) {
+  const { entries, loaded } = useJournal();
+  if (!loaded || recentBlankDays(entries, today, 1).length === 0) return null;
+  return (
+    <p>
+      <Link href={`/day/?d=${addDays(today, -1)}`} className="text-[14px] text-faint hover:text-muted">
+        Yesterday is blank. Write it?
+      </Link>
+    </p>
+  );
 }
