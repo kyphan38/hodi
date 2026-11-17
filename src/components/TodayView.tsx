@@ -297,8 +297,8 @@ export function BlockPage({
             voice={<VoiceWord onText={addSpoken} />}
             links={
               composing ? (
-                <>
-                <p className="flex gap-2">
+                <div className="min-w-0">
+                <p className="flex gap-2 whitespace-nowrap">
                   {activeQuestion ? (
                     <>
                       <button
@@ -341,7 +341,7 @@ export function BlockPage({
                   )}
                 </p>
                 {pickingTopic && activeQuestion && (
-                  <p className="flex flex-wrap gap-x-2" role="group" aria-label="Question topic">
+                  <p className="flex flex-wrap gap-x-2 whitespace-nowrap" role="group" aria-label="Question topic">
                     {[null, ...TOPICS, ...(mine.length ? (['mine'] as const) : [])].map((t) => (
                       <button
                         key={t ?? 'any'}
@@ -360,7 +360,7 @@ export function BlockPage({
                     ))}
                   </p>
                 )}
-                </>
+                </div>
               ) : null
             }
           />
@@ -421,7 +421,7 @@ function BlockEditor({
       />
       <div className="mt-3 flex items-baseline justify-between gap-4">
         {links ?? <span />}
-        <span className="flex items-baseline gap-4">
+        <span className="flex shrink-0 items-baseline gap-4 whitespace-nowrap">
           {voice}
           {onDone && (
             <button type="button" onClick={onDone} className="py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink">
