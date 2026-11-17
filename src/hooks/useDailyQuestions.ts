@@ -17,7 +17,7 @@ const BUSY_RETRY_MS = 20_000;
  * offline or still loading. Reads users/{uid}/meta/ai first so the function
  * runs once a day, not on every open.
  */
-export function useDailyQuestions(uid: string, day: string, enabled: boolean): string[] {
+export function useDailyQuestions(uid: string, day: string, enabled: boolean, mine: readonly string[] = []): string[] {
   const [got, setGot] = useState<{ day: string; list: string[] } | null>(null);
   useEffect(() => {
     if (!enabled) return;
@@ -31,12 +31,12 @@ export function useDailyQuestions(uid: string, day: string, enabled: boolean): s
         if (meta?.questionFor?.day === day) {
           list = [meta.followUpFor?.day === day ? meta.followUpFor.text : null, meta.questionFor.text];
         } else {
-          let res = await dailyQuestion(day, aiCandidates(day));
+          let res = await dailyQuestion(day, aiCandidates(day, mine));
           // Another open is running it right now: ask again once it is done.
           if (res.busy) {
             await new Promise((r) => setTimeout(r, BUSY_RETRY_MS));
             if (!alive) return;
-            res = await dailyQuestion(day, aiCandidates(day));
+            res = await dailyQuestion(day, aiCandidates(day, mine));
           }
           list = [res.followUp, res.question];
         }
@@ -48,7 +48,8 @@ export function useDailyQuestions(uid: string, day: string, enabled: boolean): s
     return () => {
       alive = false;
     };
-  }, [uid, day, enabled]);
+    // The day's pick is cached in meta/ai, so a change in `mine` only re-reads it.
+  }, [uid, day, enabled, mine]);
   return enabled && got?.day === day ? got.list : NONE;
 }
 

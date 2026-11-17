@@ -226,3 +226,40 @@ html.veiled body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------------------------ print a year (H6) */
+.book-month {
+  margin-top: 4rem;
+}
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #141414 !important;
+  }
+  .no-print,
+  nav,
+  header {
+    display: none !important;
+  }
+  .book .text-faint,
+  .book .text-muted {
+    color: #555 !important;
+  }
+  .book-cover {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .book-month {
+    break-before: page;
+    margin-top: 0;
+  }
+  .book-page {
+    break-inside: avoid-page;
+  }
+}

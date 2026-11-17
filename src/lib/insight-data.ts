@@ -32,3 +32,12 @@ export function watchTalk(uid: string, analysisId: string, onData: (talk: Talk |
     (err) => console.error('[ai] talk watch failed', err),
   );
 }
+
+/** The kept look back on one year (H4, written by yearSummary), or null. */
+export function watchYearSum(uid: string, year: string, onData: (text: string | null) => void): Unsubscribe {
+  return onSnapshot(
+    doc(getDb(), 'users', uid, 'yearSums', year),
+    (snap) => onData(snap.exists() ? String(snap.data().text ?? '') : null),
+    () => onData(null),
+  );
+}

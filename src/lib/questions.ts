@@ -17,6 +17,8 @@ import { QUESTION_RE } from '@/lib/day';
 /** The topics shown under "topic" on Today. Each one gathers a few smaller groups. */
 export const TOPICS = ['feelings', 'people', 'work', 'growth', 'daily life', 'memories', 'world'] as const;
 export type Topic = (typeof TOPICS)[number];
+/** A topic to pick from: the app's, or "mine" for the user's own questions (H3). */
+export type TopicPick = Topic | 'mine';
 
 /** Questions by topic. The "// name" lines keep the smaller groups readable. */
 export const BY_TOPIC: Record<Topic, readonly string[]> = {
@@ -382,12 +384,14 @@ function hash(s: string): number {
 /** Most questions the AI function `daily` accepts (checkCandidates). */
 export const AI_MAX = 200;
 
-/** The questions sent to AI for a day: 200 in a row, from a spot set by the date. */
-export function aiCandidates(day: string): readonly string[] {
+/** The questions sent to AI for a day: the user's own first, then the app's in a row from a spot set by the date. */
+export function aiCandidates(day: string, mine: readonly string[] = []): readonly string[] {
+  const own = mine.slice(0, AI_MAX);
+  const room = AI_MAX - own.length;
   const n = QUESTIONS.length;
-  if (n <= AI_MAX) return QUESTIONS;
   const start = hash(day) % n;
-  return Array.from({ length: AI_MAX }, (_, i) => QUESTIONS[(start + i) % n]);
+  const app = n <= room ? QUESTIONS : Array.from({ length: room }, (_, i) => QUESTIONS[(start + i) % n]);
+  return [...own, ...app];
 }
 
 /**
@@ -396,15 +400,17 @@ export function aiCandidates(day: string): readonly string[] {
  * stepping through it used to ask about friends many times in a row). With a
  * topic, it steps through that topic only.
  */
-export function questionFor(day: string, skip = 0, topic: Topic | null = null): string {
+export function questionFor(day: string, skip = 0, topic: TopicPick | null = null, mine: readonly string[] = []): string {
   const h = hash(day);
-  if (topic) {
-    const list = BY_TOPIC[topic];
+  const listOf = (t: TopicPick): readonly string[] => (t === 'mine' ? mine : BY_TOPIC[t]);
+  if (topic && listOf(topic).length) {
+    const list = listOf(topic);
     return list[(h + skip) % list.length];
   }
-  const n = TOPICS.length;
-  const t = TOPICS[(h + skip) % n];
-  const list = BY_TOPIC[t];
+  // The user's own questions take a turn like one more topic (H3).
+  const order: readonly TopicPick[] = mine.length ? [...TOPICS, 'mine'] : TOPICS;
+  const n = order.length;
+  const list = listOf(order[(h + skip) % n]);
   return list[(h + Math.floor((h % n + skip) / n)) % list.length];
 }
 
@@ -428,12 +434,13 @@ export function nextQuestion(
   asked: Set<string>,
   skip: number,
   picks: readonly string[] = [],
-  topic: Topic | null = null,
+  topic: TopicPick | null = null,
+  mine: readonly string[] = [],
 ): { question: string; skip: number } {
   // A chosen topic replaces the AI picks: the user asked for that topic.
   const from = topic ? [] : picks;
-  const at = (i: number) => (i < from.length ? from[i] : questionFor(day, i - from.length, topic));
-  const total = from.length + (topic ? BY_TOPIC[topic].length : QUESTIONS.length);
+  const at = (i: number) => (i < from.length ? from[i] : questionFor(day, i - from.length, topic, mine));
+  const total = from.length + (topic === 'mine' ? mine.length : topic ? BY_TOPIC[topic].length : QUESTIONS.length + mine.length);
   for (let i = 0; i < total; i++) {
     const q = at(skip + i);
     if (!asked.has(q)) return { question: q, skip: skip + i };

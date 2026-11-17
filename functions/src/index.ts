@@ -8,14 +8,11 @@
 // day's question from `daily`.
 // ============================================================
 
-import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { setGlobalOptions } from 'firebase-functions';
-import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/https';
+import { HttpsError, onCall } from 'firebase-functions/https';
 import { logger } from 'firebase-functions';
-import { defineSecret, defineString } from 'firebase-functions/params';
 
-import { isAllowed } from './access.ts';
+import { GEMINI_API_KEY, GEMINI_MODEL, GEMINI_MODEL_ANALYZE, guard, modelError, run } from './shared.ts';
 import { DIRECT_MAX_DAYS, formatLessons, formatPast, RANGE_MAX_CHARS, type LessonLite, type PastEntry } from './context.ts';
 import { addDaysId, monthsIn, parseRange, rangeDays } from './dates.ts';
 import { embedTexts } from './embed.ts';
@@ -44,22 +41,6 @@ import {
 import { nearest, syncIndex } from './search.ts';
 import { monthSummaries, type DatedEntry } from './summaries.ts';
 
-setGlobalOptions({ region: 'asia-southeast1', maxInstances: 2 });
-initializeApp();
-
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
-const ALLOWED_USER_EMAIL = defineString('ALLOWED_USER_EMAIL');
-// Flash for every call except analyze. In tests Flash high on analyze took
-// over 90 s with 12k thinking tokens; argon took 18 s and read better.
-const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: 'gemini-3.8-flash' });
-const GEMINI_MODEL_ANALYZE = defineString('GEMINI_MODEL_ANALYZE', { default: 'gemini-4-argon' });
-
-function guard(req: CallableRequest): string {
-  if (!req.auth || !isAllowed(req.auth.token, ALLOWED_USER_EMAIL.value())) {
-    throw new HttpsError('permission-denied', 'Not allowed');
-  }
-  return req.auth.uid;
-}
 
 /** Settings "check": proves auth, the key and the model all work. */
 export const ping = onCall({ secrets: [GEMINI_API_KEY] }, async (req) => {
@@ -80,22 +61,6 @@ export const ping = onCall({ secrets: [GEMINI_API_KEY] }, async (req) => {
   }
 });
 
-/** Out of Gemini credit (HTTP 402 / 429) gets its own code so the app can say so (same as legi). */
-function modelError(err: unknown): HttpsError {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (/"code":\s*(402|429)|RESOURCE_EXHAUSTED/.test(msg)) return new HttpsError('resource-exhausted', 'Model quota used up');
-  return new HttpsError('unavailable', 'Model call failed');
-}
-
-async function run<T>(name: string, fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    // Log the error only: never journal text.
-    logger.error(`${name} failed`, err instanceof Error ? err.message : String(err));
-    throw modelError(err);
-  }
-}
 
 /** Days of pages read for the daily pick and for finding promises. */
 const DAILY_DAYS = 7;
@@ -406,3 +371,5 @@ export const talk = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 60 }, as
     return answer;
   });
 });
+
+export { transcribe, yearSummary, theme, lessonFor } from './more.ts';

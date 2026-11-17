@@ -9,6 +9,8 @@ import CustomPicker from '@/components/insight/CustomPicker';
 import History, { PastDay } from '@/components/insight/History';
 import Lessons from '@/components/insight/Lessons';
 import MeaningSearch from '@/components/insight/MeaningSearch';
+import ThemeOverTime from '@/components/insight/ThemeOverTime';
+import YearSummary from '@/components/insight/YearSummary';
 import RangeAnalysis from '@/components/insight/RangeAnalysis';
 import { useAnalyses } from '@/hooks/useInsight';
 import { clockStore } from '@/lib/clock';
@@ -93,6 +95,10 @@ export default function InsightView() {
       />
 
       <MeaningSearch />
+
+      <ThemeOverTime />
+
+      <YearSummary uid={uid} />
 
       <Lessons uid={uid} />
 

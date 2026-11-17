@@ -17,11 +17,12 @@ import { clockStore } from '@/lib/clock';
 import { countWords, dayOf, dayShort } from '@/lib/day';
 import { firstLine, hasWords } from '@/lib/journal';
 import { reviewKey } from '@/lib/page-data';
-import { periodDays, reviewInvites, reviewKind, reviewTitle, type ReviewKind } from '@/lib/review';
+import { periodDays, reviewInvites, reviewKind, reviewTitle, YEAR_QUESTIONS, type ReviewKind } from '@/lib/review';
 
 const PLACEHOLDER: Record<ReviewKind, string> = {
   week: 'What is worth remembering from this week?',
   month: 'What is worth remembering from this month?',
+  year: 'Take the questions one at a time, or write freely.',
 };
 
 /** /review/?p=2026-W40 or ?p=2026-10. */
@@ -71,7 +72,14 @@ function ReviewPage({ period, kind }: { period: string; kind: ReviewKind }) {
           </button>
         }
       />
-      <PeriodPages period={period} />
+      {kind === 'year' ? <YearMonths year={period} /> : <PeriodPages period={period} />}
+      {kind === 'year' && (
+        <ul className="mt-10 space-y-1.5 text-[15px] text-muted">
+          {YEAR_QUESTIONS.map((q) => (
+            <li key={q}>› {q}</li>
+          ))}
+        </ul>
+      )}
       <div className="mt-12">
         <Editor
           value={page.text}
@@ -147,6 +155,39 @@ export function ReviewInvites({ today }: { today: string }) {
           </Link>
         </li>
       ))}
+    </ul>
+  );
+}
+
+/**
+ * The year review (H4) reads back by month: each month's review, and how many
+ * pages that month has. 365 folded pages would be too long to scan.
+ */
+function YearMonths({ year }: { year: string }) {
+  const { entries, reviews, loaded } = useJournal();
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`).map((m) => ({
+        month: m,
+        pages: entries.filter((e) => e.date.startsWith(`${m}-`) && hasWords(e)).length,
+        review: reviews.find((r) => r.period === m) ?? null,
+      })),
+    [entries, reviews, year],
+  );
+  if (!loaded) return null;
+  return (
+    <ul className="mt-8">
+      {months
+        .filter((m) => m.pages > 0 || m.review)
+        .map((m) => (
+          <li key={m.month}>
+            <Link href={`/review/?p=${m.month}`} className="flex items-baseline gap-4 py-1.5">
+              <span className="w-14 shrink-0 text-[13px] whitespace-nowrap text-faint tabular-nums">{reviewTitle(m.month).split(' ')[0].slice(0, 3)}</span>
+              <span className="min-w-0 flex-1 truncate text-[15px] text-muted">{m.review ? firstLine(m.review.text) : ''}</span>
+              <span className="shrink-0 text-[13px] text-faint tabular-nums">{m.pages}</span>
+            </Link>
+          </li>
+        ))}
     </ul>
   );
 }

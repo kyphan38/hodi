@@ -13,7 +13,7 @@ export type Entry = {
 
 /** users/{uid}/reviews/{'2026-W40' | '2026-10'}. */
 export type Review = {
-  kind: 'week' | 'month';
+  kind: 'week' | 'month' | 'year';
   period: string;
   text: string;
   words: number;

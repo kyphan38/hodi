@@ -43,7 +43,7 @@ export function recentBlankDays(entries: readonly { date: string; words: number 
 
 export type TimelineItem =
   | { type: 'entry'; date: string; line: string; words: number }
-  | { type: 'review'; period: string; kind: 'week' | 'month'; line: string }
+  | { type: 'review'; period: string; kind: 'week' | 'month' | 'year'; line: string }
   | { type: 'gap'; days: number };
 
 export type TimelineMonth = { month: string; items: TimelineItem[] };
@@ -51,6 +51,7 @@ export type TimelineMonth = { month: string; items: TimelineItem[] };
 /** Last day of a review period - the review shows right above that day in the timeline. */
 export function reviewEnd(r: Pick<Review, 'kind' | 'period'>): string {
   if (r.kind === 'week') return addDays(weekMonday(r.period), 6);
+  if (r.kind === 'year') return `${r.period}-12-31`;
   const [y, m] = r.period.split('-').map(Number);
   const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
   return addDays(next, -1);

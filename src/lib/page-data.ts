@@ -14,6 +14,7 @@ export type PageData = Entry | Review;
 
 export const WEEK_RE = /^\d{4}-W\d{2}$/;
 export const MONTH_RE = /^\d{4}-\d{2}$/;
+export const YEAR_RE = /^\d{4}$/;
 
 export function entryKey(date: string): PageKey {
   return { col: 'entries', id: date };
@@ -24,7 +25,7 @@ export function reviewKey(period: string): PageKey {
 }
 
 export function isValidKey(key: PageKey): boolean {
-  return key.col === 'entries' ? isDayId(key.id) : WEEK_RE.test(key.id) || MONTH_RE.test(key.id);
+  return key.col === 'entries' ? isDayId(key.id) : WEEK_RE.test(key.id) || MONTH_RE.test(key.id) || YEAR_RE.test(key.id);
 }
 
 export function keyId(key: PageKey): string {
@@ -69,7 +70,7 @@ export function buildPage(
     };
   }
   return {
-    kind: WEEK_RE.test(key.id) ? 'week' : 'month',
+    kind: WEEK_RE.test(key.id) ? 'week' : YEAR_RE.test(key.id) ? 'year' : 'month',
     period: key.id,
     text,
     words,

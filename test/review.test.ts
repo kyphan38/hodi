@@ -19,7 +19,17 @@ test('review invite: month end and the first two days of the month', () => {
   assert.deepEqual(kinds('2026-11-01'), ['week:2026-W44', 'month:2026-10']); // Sun, day 1
   assert.deepEqual(kinds('2026-11-02'), ['week:2026-W44', 'month:2026-10']); // Mon, day 2
   assert.deepEqual(kinds('2026-11-03'), []);
-  assert.deepEqual(kinds('2027-01-01'), ['month:2026-12']);
+  assert.deepEqual(kinds('2027-01-01'), ['month:2026-12', 'year:2026']);
+});
+
+test('review invite: the year from 26 December to 7 January (H4)', () => {
+  assert.deepEqual(kinds('2026-12-25').filter((k) => k.startsWith('year')), []);
+  assert.deepEqual(kinds('2026-12-26').filter((k) => k.startsWith('year')), ['year:2026']);
+  assert.deepEqual(kinds('2027-01-07').filter((k) => k.startsWith('year')), ['year:2026']);
+  assert.deepEqual(kinds('2027-01-08').filter((k) => k.startsWith('year')), []);
+  assert.equal(reviewKind('2026'), 'year');
+  assert.equal(periodDays('2026').length, 365);
+  assert.equal(reviewTitle('2026'), 'The year 2026');
 });
 
 test('days in a review period', () => {

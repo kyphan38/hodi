@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
 
+import MyQuestions from '@/components/MyQuestions';
 import TopBar from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJournal } from '@/contexts/JournalContext';
@@ -197,6 +198,8 @@ export default function SettingsView() {
         />
       </section>
 
+      {user && <MyQuestions uid={user.uid} />}
+
       <section className="mt-10 text-[15px]">
         <Choice
           label="AI"
@@ -238,6 +241,11 @@ export default function SettingsView() {
           >
             export .md
           </button>
+        </Row>
+        <Row label="A year as a book">
+          <Link href="/print/" className="text-faint hover:text-ink">
+            print
+          </Link>
         </Row>
       </section>
 

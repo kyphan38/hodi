@@ -49,8 +49,37 @@ service cloud.firestore {
       return d.keys().hasOnly(['kind', 'period', 'text', 'words', 'createdAt', 'updatedAt'])
         && d.period == id
         && ((d.kind == 'week' && id.matches('^[0-9]{4}-W[0-9]{2}$'))
-          || (d.kind == 'month' && id.matches('^[0-9]{4}-[0-9]{2}$')))
+          || (d.kind == 'month' && id.matches('^[0-9]{4}-[0-9]{2}$'))
+          || (d.kind == 'year' && id.matches('^[0-9]{4}$')))
         && validText(d);
+    }
+
+    // Letter to the future (H1): sealed until openOn. Never deleted (rule #6).
+    function validLetter(d) {
+      return d.keys().hasOnly(['text', 'openOn', 'createdAt', 'openedAt'])
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 20000
+        && isDay(d.openOn)
+        && d.createdAt is int
+        && (d.openedAt == null || d.openedAt is int);
+    }
+
+    // My questions (H3), mixed into the daily questions. Removing one archives it (rule #6).
+    function validQuestion(d) {
+      return d.keys().hasOnly(['text', 'archived', 'createdAt'])
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 300
+        && d.archived is bool
+        && d.createdAt is int;
+    }
+
+    match /users/{uid}/letters/{id} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validLetter(request.resource.data);
+      allow delete: if false;
+    }
+    match /users/{uid}/questions/{id} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validQuestion(request.resource.data);
+      allow delete: if false;
     }
 
     // One day = one doc, id 'YYYY-MM-DD'. Never deleted (rule #6).
@@ -97,6 +126,11 @@ service cloud.firestore {
       allow write: if false;
     }
     match /users/{uid}/meta/{id} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+    // Year look back (H4), written by yearSummary.
+    match /users/{uid}/yearSums/{year} {
       allow read: if isOwner(uid);
       allow write: if false;
     }

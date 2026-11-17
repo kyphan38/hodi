@@ -55,3 +55,26 @@ export function failWord(err: unknown): string {
   const code = (err as { code?: string })?.code ?? '';
   return code.endsWith('resource-exhausted') ? 'no AI credit' : 'failed';
 }
+
+/** Speech to text for the editor (H2). Works with AI off: nothing is kept. '' when nothing was heard. */
+export async function transcribe(audio: string, mimeType: string): Promise<string> {
+  const res = await call<{ audio: string; mimeType: string }, { text: string }>('transcribe', { audio, mimeType });
+  return res.text;
+}
+
+/** A look back on one year (H4); the function also saves it to yearSums/{year}. */
+export function yearSummary(year: string): Promise<{ text: string }> {
+  return call('yearSummary', { year }, 300_000);
+}
+
+export type ThemeHit = MeaningHit;
+
+/** One theme over time (H8): blocks oldest first and a short note on how it changed. */
+export function themeOverTime(theme: string): Promise<{ summary: string; hits: ThemeHit[]; partial: boolean }> {
+  return call('theme', { theme });
+}
+
+/** The kept lesson closest to a finished block (H9), or null. */
+export function lessonFor(text: string): Promise<{ lesson: { id: string; text: string } | null }> {
+  return call('lessonFor', { text }, 30_000);
+}

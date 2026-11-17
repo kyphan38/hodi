@@ -12,6 +12,8 @@ import { clockStore } from '@/lib/clock';
 import { dayOf, dayShort, dayTiny, monthLabel, weekMonday } from '@/lib/day';
 import { buildTimeline, hasWords, randomDay, recentBlankDays, search, type TimelineItem } from '@/lib/journal';
 import { stringStore } from '@/lib/store';
+import { useUid } from '@/components/AuthGate';
+import { LetterBox } from '@/components/Letters';
 
 /** Search box and scroll position live per session: open a day, go back, land in the same spot. */
 const queryStore = stringStore<string>('hodi.days.q', '', (raw) => raw, 'session');
@@ -35,7 +37,8 @@ function writeSession(key: string, value: number) {
   }
 }
 
-export function reviewLabel(kind: 'week' | 'month', period: string): string {
+export function reviewLabel(kind: 'week' | 'month' | 'year', period: string): string {
+  if (kind === 'year') return `${period} review`;
   if (kind === 'month') return `${monthLabel(period).split(' ')[0]} review`;
   return `week of ${dayTiny(weekMonday(period))}`;
 }
@@ -45,6 +48,7 @@ export default function DaysView() {
   const { entries, reviews, loaded } = useJournal();
   const now = useSyncExternalStore(clockStore.subscribe, clockStore.get, clockStore.getServer);
   const today = dayOf(now);
+  const uid = useUid();
 
   const query = useSyncExternalStore(queryStore.subscribe, queryStore.get, queryStore.getServer);
   const deferredQuery = useDeferredValue(query);
@@ -161,6 +165,8 @@ export default function DaysView() {
           </button>
         )}
       </div>
+
+      {!searching && <LetterBox uid={uid} today={today} />}
 
       {searching ? (
         <SearchResults hits={hits} query={deferredQuery} />

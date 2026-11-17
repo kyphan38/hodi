@@ -89,7 +89,8 @@ file sinh ra không commit).
 
 ## Để sau
 
-- Heatmap chọn năm (khi có > 1 năm dữ liệu).
+- ~~Heatmap chọn năm (khi có > 1 năm dữ liệu).~~ Đã làm 2026-11-17 (H7).
+- 2026-11-17 (PLAN-ideas-2026-11 H1-H4, H6-H9): thư gửi tương lai (`letters`, không xoá), ghi âm thành chữ (`transcribe`), câu hỏi riêng (`questions`, ẩn thay vì xoá), review năm (`reviews/{YYYY}`) + tóm tắt năm (`yearSums`), in một năm thành sổ (`/print`), chủ đề theo thời gian (`theme`), bài học hiện lại sau done (`lessonFor`).
 - ~~Khoá Face ID (passkey).~~ Đã làm 2026-11-15: Settings → Face ID lock, hỏi lại khi rời app quá 5 phút, theo từng thiết bị.
 
 ## Nhật ký quyết định

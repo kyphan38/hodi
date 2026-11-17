@@ -15,6 +15,9 @@ import {
 
 import GrowText from '@/components/GrowText';
 import OnThisDay from '@/components/OnThisDay';
+import VoiceWord from '@/components/VoiceWord';
+import { lessonFor } from '@/lib/ai';
+import { LetterArrived } from '@/components/Letters';
 import { ReviewInvites } from '@/components/ReviewView';
 import StatusDot from '@/components/StatusDot';
 import TopBar from '@/components/TopBar';
@@ -27,7 +30,8 @@ import { answered, parseBlocks, serializeBlocks, type Block } from '@/lib/blocks
 import { addDays, countWords, dayLabel, dayOf, timeLabel } from '@/lib/day';
 import { entryKey } from '@/lib/page-data';
 import { aiLangStore, aiStore, questionsStore } from '@/lib/prefs';
-import { TOPICS, nextQuestion, type Topic } from '@/lib/questions';
+import { TOPICS, nextQuestion, type TopicPick } from '@/lib/questions';
+import { useMyQuestions } from '@/hooks/useMyQuestions';
 import { recentBlankDays } from '@/lib/journal';
 import { useJournal } from '@/contexts/JournalContext';
 import { needsSupport, SUPPORT_LINE } from '@/lib/safety';
@@ -81,6 +85,7 @@ function TodayPage({ uid, day }: { uid: string; day: string }) {
       />
       <BlockPage uid={uid} day={day} ai />
       <div className="mt-14 space-y-6 pb-[40dvh] empty:hidden">
+        <LetterArrived uid={uid} today={day} />
         <YesterdayInvite today={day} />
         <ReviewInvites today={day} />
         <OnThisDay today={day} />
@@ -115,7 +120,9 @@ export function BlockPage({
   const [moved, setMoved] = useState(false);
   const [freeWrite, setFreeWrite] = useState(false);
   // A chosen topic stays until "any" is picked; null = rotate through all topics.
-  const [topic, setTopic] = useState<Topic | null>(null);
+  const [topic, setTopic] = useState<TopicPick | null>(null);
+  // The user's own questions (H3): mixed in, and a "mine" topic.
+  const mine = useMyQuestions(uid).texts;
   const [pickingTopic, setPickingTopic] = useState(false);
   // The open block. null = nothing written in the new block yet (showing the prompt question).
   const [editing, setEditing] = useState<number | null>(null);
@@ -134,8 +141,8 @@ export function BlockPage({
 
   // Prompt: the next question not answered today. "another" moves one on.
   // AI (PLAN-ai #6, #8): a follow-up on a promise, then the day's picked question.
-  const picks = useDailyQuestions(uid, day, ai && aiOn && questionsOn);
-  const suggestion = nextQuestion(day, answered(blocks), skip, picks, topic);
+  const picks = useDailyQuestions(uid, day, ai && aiOn && questionsOn, mine);
+  const suggestion = nextQuestion(day, answered(blocks), skip, picks, topic, mine);
   const composing = editing === null;
   const activeQuestion = composing ? (questionsOn && !freeWrite ? suggestion.question : null) : blocks[editing]?.question;
 
@@ -160,9 +167,25 @@ export function BlockPage({
     write(blocks.map((b, i) => (i === editing ? { ...b, body: value } : b)));
   };
 
+  /** Spoken words (H2) join the end of the open block, or start a new one. */
+  const addSpoken = (text: string) => {
+    const body = activeBody.trimEnd();
+    onActiveChange(body ? `${body}${body.endsWith('\n') ? '' : ' '}${text}` : text);
+  };
+
+  // H9: a kept lesson that fits the block just finished, as one faint line under it.
+  const [lesson, setLesson] = useState<{ index: number; text: string } | null>(null);
+
   /** "done": close the block (drop it if empty), the next question appears. */
   const done = () => {
     if (editing === null) return;
+    const finished = blocks[editing];
+    if (ai && aiOn && finished && finished.body.trim().length >= 20) {
+      const index = editing;
+      lessonFor(finished.body)
+        .then((r) => setLesson(r.lesson ? { index, text: r.lesson.text } : null))
+        .catch(() => {});
+    }
     setMoved(true);
     const kept = blocks.filter((b, i) => i !== editing || b.body.trim() !== '');
     if (kept.length !== blocks.length) write(kept);
@@ -230,6 +253,7 @@ export function BlockPage({
                     onChange={onActiveChange}
                     onKeyDown={onKeyDown}
                     onDone={done}
+                    voice={<VoiceWord onText={addSpoken} />}
                   />
                 </li>
               );
@@ -250,6 +274,7 @@ export function BlockPage({
                     <span className="block whitespace-pre-wrap text-[15px] text-muted group-hover:text-ink">
                       {b.body.trim() || '…'}
                     </span>
+                    {lesson?.index === i && <span className="fade-in mt-1 block text-[13px] text-faint">lesson: {lesson.text}</span>}
                   </span>
                 </button>
               </li>
@@ -269,6 +294,7 @@ export function BlockPage({
             onKeyDown={onKeyDown}
             onDone={composing ? close : done}
             fadeQuestion={moved}
+            voice={<VoiceWord onText={addSpoken} />}
             links={
               composing ? (
                 <>
@@ -316,7 +342,7 @@ export function BlockPage({
                 </p>
                 {pickingTopic && activeQuestion && (
                   <p className="flex flex-wrap gap-x-2" role="group" aria-label="Question topic">
-                    {[null, ...TOPICS].map((t) => (
+                    {[null, ...TOPICS, ...(mine.length ? (['mine'] as const) : [])].map((t) => (
                       <button
                         key={t ?? 'any'}
                         type="button"
@@ -358,6 +384,7 @@ function BlockEditor({
   onDone,
   links,
   fadeQuestion = false,
+  voice,
 }: {
   block: Block;
   placeholder?: string;
@@ -368,6 +395,8 @@ function BlockEditor({
   links?: ReactNode;
   /** A new question fades in (opacity only: the field below must not move). */
   fadeQuestion?: boolean;
+  /** Speech to text (H2), next to "done". */
+  voice?: ReactNode;
 }) {
   return (
     <div
@@ -392,11 +421,14 @@ function BlockEditor({
       />
       <div className="mt-3 flex items-baseline justify-between gap-4">
         {links ?? <span />}
-        {onDone && (
-          <button type="button" onClick={onDone} className="py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink">
-            done
-          </button>
-        )}
+        <span className="flex items-baseline gap-4">
+          {voice}
+          {onDone && (
+            <button type="button" onClick={onDone} className="py-1 font-mono text-[11px] tracking-[0.04em] text-faint hover:text-ink">
+              done
+            </button>
+          )}
+        </span>
       </div>
     </div>
   );

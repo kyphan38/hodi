@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { addMonths, dayLong, monthLabel, monthOf } from '@/lib/day';
+import { bookYears } from '@/lib/book';
 import { buildHeatmap, buildMonth, type HeatCell } from '@/lib/journal';
 import type { Entry } from '@/types/hodi';
 
@@ -48,6 +49,10 @@ function cellStyle(c: HeatCell) {
  */
 export default function Heatmap({ entries, today }: { entries: Entry[]; today: string }) {
   const [month, setMonth] = useState(readMonth);
+  // H7: a past year, or null for the last 12 months.
+  const [year, setYear] = useState<string | null>(null);
+  const years = useMemo(() => bookYears(entries), [entries]);
+  const end = year ? `${year}-12-31` : today;
   const open = (m: string | null) => {
     setMonth(m);
     writeMonth(m);
@@ -58,7 +63,21 @@ export default function Heatmap({ entries, today }: { entries: Entry[]; today: s
       {month ? (
         <Month key={month} entries={entries} today={today} month={month} onMonth={open} />
       ) : (
-        <Year entries={entries} today={today} onMonth={open} />
+        <>
+          {years.length > 1 && (
+            <p className="mb-2 flex flex-wrap gap-x-3 font-mono text-[11px]" role="radiogroup" aria-label="Year">
+              <button type="button" role="radio" aria-checked={year === null} onClick={() => setYear(null)} className={year === null ? 'text-ink' : 'text-faint hover:text-ink'}>
+                last 12 months
+              </button>
+              {years.map((y) => (
+                <button key={y} type="button" role="radio" aria-checked={year === y} onClick={() => setYear(y)} className={year === y ? 'text-ink' : 'text-faint hover:text-ink'}>
+                  {y}
+                </button>
+              ))}
+            </p>
+          )}
+          <Year key={end} entries={entries} today={end < today ? end : today} onMonth={open} />
+        </>
       )}
       <figcaption className="mt-2 flex items-center justify-end gap-1 font-mono text-[10px] text-faint">
         <span className="mr-1">less</span>

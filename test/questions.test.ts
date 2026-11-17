@@ -70,3 +70,25 @@ test('every question has exactly one of the 7 topics', () => {
   assert.equal(TOPICS.reduce((n, t) => n + BY_TOPIC[t].length, 0), QUESTIONS.length);
   assert.ok(QUESTIONS.every((q) => topicOf(q)));
 });
+
+test('my questions (H3): a topic of their own, and one turn in the mix', () => {
+  const mine = ['What did I avoid today?', 'Who made me smile?'];
+  assert.ok(mine.includes(questionFor('2026-11-17', 0, 'mine', mine)));
+  assert.notEqual(questionFor('2026-11-17', 0, 'mine', mine), questionFor('2026-11-17', 1, 'mine', mine));
+  // Over 8 steps (7 topics + mine) one of them is the user's.
+  const eight = Array.from({ length: 8 }, (_, i) => questionFor('2026-11-17', i, null, mine));
+  assert.equal(eight.filter((q) => mine.includes(q)).length, 1);
+  // No questions of your own: the usual rotation.
+  assert.equal(questionFor('2026-11-17', 3, null, []), questionFor('2026-11-17', 3));
+  // "mine" with nothing saved falls back to the mix.
+  assert.ok(QUESTIONS.includes(questionFor('2026-11-17', 0, 'mine', [])));
+  const next = nextQuestion('2026-11-17', new Set([mine[0], mine[1]]), 0, [], 'mine', mine);
+  assert.ok(mine.includes(next.question));
+});
+
+test('aiCandidates puts my questions first and stays within the cap', () => {
+  const mine = ['Mine 1', 'Mine 2'];
+  const a = aiCandidates('2026-11-17', mine);
+  assert.deepEqual(a.slice(0, 2), mine);
+  assert.ok(a.length <= AI_MAX);
+});

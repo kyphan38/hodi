@@ -18,7 +18,7 @@
 // ============================================================
 
 const CACHE_VERSION = 'hodi-v1';
-const PAGES = ['/', '/days/', '/day/', '/review/', '/insight/', '/settings/', '/guide/', '/login/'];
+const PAGES = ['/', '/days/', '/day/', '/review/', '/insight/', '/settings/', '/guide/', '/print/', '/login/'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
