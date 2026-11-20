@@ -1,5 +1,7 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
+import { logAiCost } from './aiCostLog.ts';
+
 export type Thinking = 'low' | 'medium' | 'high';
 const LEVEL: Record<Thinking, ThinkingLevel> = { low: ThinkingLevel.LOW, medium: ThinkingLevel.MEDIUM, high: ThinkingLevel.HIGH };
 
@@ -27,6 +29,7 @@ export async function generateText(
       httpOptions: { timeout: opts.timeoutMs ?? 30_000 },
     },
   });
+  await logAiCost(model, res.usageMetadata);
   const text = (res.text ?? '').trim();
   if (!text) throw new Error('Empty answer from model');
   return text;

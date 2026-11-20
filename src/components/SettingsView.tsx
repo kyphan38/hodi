@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
 
+import AiCostRow from '@/components/AiCostRow';
 import MyQuestions from '@/components/MyQuestions';
 import TopBar from '@/components/TopBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -224,6 +225,7 @@ export default function SettingsView() {
             <AiCheck />
           </>
         )}
+        <AiCostRow />
       </section>
 
       <section className="mt-10 text-[15px]">

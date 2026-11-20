@@ -7,6 +7,7 @@ import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/https';
 
+import { logAiCost } from './aiCostLog.ts';
 import { embedTexts } from './embed.ts';
 import { generateText } from './gemini.ts';
 import { parseLang } from './lang.ts';
@@ -51,6 +52,7 @@ export const transcribe = onCall({ secrets: [GEMINI_API_KEY], timeoutSeconds: 12
         httpOptions: { timeout: 100_000 },
       },
     });
+    await logAiCost(GEMINI_MODEL.value(), res.usageMetadata);
     return { text: parseVoice(res.text ?? '') };
   });
 });

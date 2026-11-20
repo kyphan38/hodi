@@ -1,5 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
+import { logEmbedCost } from './aiCostLog.ts';
+
 export const EMBED_MODEL = 'gemini-embedding-2';
 /** Must match the vector index in firestore.indexes.json. */
 export const EMBED_DIM = 768;
@@ -34,6 +36,7 @@ async function embedOne(ai: GoogleGenAI, part: string[]): Promise<number[][]> {
     contents: part.map((text) => ({ parts: [{ text }] })),
     config: { outputDimensionality: EMBED_DIM, httpOptions: { timeout: 30_000 } },
   });
+  await logEmbedCost(EMBED_MODEL, part);
   const vectors = (res.embeddings ?? []).map((e) => e.values ?? []);
   if (vectors.length !== part.length || vectors.some((v) => v.length !== EMBED_DIM)) {
     throw new Error('Bad embedding answer');
